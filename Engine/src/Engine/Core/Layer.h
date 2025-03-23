@@ -2,6 +2,7 @@
 
 #include "Engine/Core.h"
 #include "Engine/Events/Event.h"
+#include "Engine/Core/Timestep.h"
 
 namespace CitrusGL
 {
@@ -13,7 +14,7 @@ namespace CitrusGL
 
 		virtual void OnAttach() {}
 		virtual void OnDetach() {}
-		virtual void OnUpdate() {}
+		virtual void OnUpdate(Timestep delta) {}
 		virtual void OnImGuiRender() {}
 		virtual void OnEvent(Event& event) {}
 

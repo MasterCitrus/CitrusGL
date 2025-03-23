@@ -60,10 +60,14 @@ namespace CitrusGL
 		ImGui::DestroyContext();
 	}
 
-	void ImGuiLayer::OnImGuiRender()
+	void ImGuiLayer::OnEvent(Event& e)
 	{
-		static bool show = true;
-		ImGui::ShowDemoWindow(&show);
+		if (blockEvents)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+			e.handled |= e.IsInCategory(EventCategoryMouse) & io.WantCaptureMouse;
+			e.handled |= e.IsInCategory(EventCategoryKeyboard) & io.WantCaptureKeyboard;
+		}
 	}
 
 	void ImGuiLayer::Begin()

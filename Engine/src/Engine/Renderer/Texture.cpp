@@ -3,6 +3,8 @@
 
 #include "stb_image.h"
 
+#include <glad/glad.h>
+
 namespace CitrusGL
 {
 	Texture::Texture() : path("none"), width(0), height(0), format(0), pixels(nullptr)

@@ -85,15 +85,15 @@ namespace CitrusGL
 									  data.eventCallback(event);
 								  });
 
-		glfwSetWindowRefreshCallback(window, [](GLFWwindow* window)
-									 {
-										 WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+		//glfwSetWindowRefreshCallback(window, [](GLFWwindow* window)
+		//							 {
+		//								 WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
 
 
-										 WindowRefreshEvent event;
-										 data.eventCallback(event);
-									 });
+		//								 WindowRefreshEvent event;
+		//								 data.eventCallback(event);
+		//							 });
 
 		glfwSetWindowCloseCallback(window, [](GLFWwindow* window)
 								   {

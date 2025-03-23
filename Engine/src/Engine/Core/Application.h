@@ -14,7 +14,7 @@ namespace CitrusGL
 	class Application
 	{
 	public:
-		Application();
+		Application(const std::string& name = "CitrusGL");
 		virtual ~Application();
 
 		void Run();
@@ -35,6 +35,7 @@ namespace CitrusGL
 		ImGuiLayer* imGuiLayer;
 		bool running = true;
 		LayerStack layerStack;
+		float lastFrameTime = 0.0f;
 
 	private:
 		static Application* instance;

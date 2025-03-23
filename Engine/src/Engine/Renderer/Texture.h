@@ -2,8 +2,6 @@
 
 #include <string>
 
-#include <glad/glad.h>
-
 namespace CitrusGL
 {
 	class Texture

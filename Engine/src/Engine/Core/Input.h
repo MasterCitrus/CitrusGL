@@ -6,12 +6,10 @@ namespace CitrusGL
 	class Input
 	{
 	public:
-	public:
-		bool IsKeyPressed(int keycode);
-
-		bool IsMouseButtonPressed(int button);
-		std::pair<float, float> GetMousePosition();
-		float GetMouseX();
-		float GetMouseY();
+		static bool IsKeyPressed(int keycode);
+		static bool IsMouseButtonPressed(int button);
+		static std::pair<float, float> GetMousePosition();
+		static float GetMouseX();
+		static float GetMouseY();
 	};
 }

@@ -1,48 +1,29 @@
 #include <CitrusGL.h>
 #include <imgui/imgui.h>
 
-class ExampleLayer : public CitrusGL::Layer
+#include "Engine/EntryPoint.h"
+
+#include "EditorLayer.h"
+
+namespace CitrusGL
 {
-public:
-	ExampleLayer() : Layer("Example")
+	class CitrusEngine : public Application
 	{
+	public:
+		CitrusEngine() : Application("Model Viewer")
+		{
+			PushLayer(new EditorLayer());
+		}
 
-	}
+		~CitrusEngine()
+		{
 
-	void OnUpdate()
+		}
+
+	};
+
+	Application* CreateApplication()
 	{
-
+		return new CitrusEngine();
 	}
-
-	void OnEvent(CitrusGL::Event& e)
-	{
-
-	}
-
-	void OnImGuiRender()
-	{
-		ImGui::Begin("Test");
-		ImGui::Text("Hello World");
-		ImGui::End();
-	}
-};
-
-class ModelViewer : public CitrusGL::Application
-{
-public:
-	ModelViewer()
-	{
-		PushLayer(new ExampleLayer());
-	}
-
-	~ModelViewer()
-	{
-
-	}
-
-};
-
-CitrusGL::Application* CitrusGL::CreateApplication()
-{
-	return new ModelViewer();
 }
