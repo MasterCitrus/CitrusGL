@@ -1,0 +1,19 @@
+[submodule "Dep/GLFW"]
+	path = Dep/GLFW
+	url = https://github.com/glfw/glfw
+[submodule "Dep/assimp"]
+	path = Dep/assimp
+	url = https://github.com/assimp/assimp
+[submodule "Dep/glm"]
+	path = Dep/glm
+	url = https://github.com/g-truc/glm
+[submodule "Dep/imgui"]
+	path = Dep/imgui
+	url = https://github.com/ocornut/imgui
+	branch = docking
+[submodule "Dep/nfde"]
+	path = Dep/nfde
+	url = https://github.com/btzy/nativefiledialog-extended
+[submodule "Dep/imguizmo"]
+	path = Dep/imguizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo
