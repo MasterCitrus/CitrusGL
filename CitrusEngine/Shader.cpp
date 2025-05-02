@@ -9,7 +9,7 @@
 #include <sstream>
 
 ShaderCode::ShaderCode()
-	: shaderID(0), type(ShaderType::NONE), lastError(std::string())
+	: shaderID(0), type(ShaderType::UNKNOWN), lastError(std::string())
 {
 }
 
@@ -33,14 +33,19 @@ bool ShaderCode::LoadShader( ShaderType type, const std::string& filePath )
 	{
 	case VERTEX:
 		shaderID = glCreateShader( GL_VERTEX_SHADER );
+		break;
 	case FRAGMENT:
 		shaderID = glCreateShader( GL_FRAGMENT_SHADER );
+		break;
 	case GEOMETRY:
 		shaderID = glCreateShader( GL_GEOMETRY_SHADER );
+		break;
 	case TESS_EVAL:
 		shaderID = glCreateShader( GL_TESS_EVALUATION_SHADER );
+		break;
 	case TESS_CONTROL:
 		shaderID = glCreateShader( GL_TESS_CONTROL_SHADER );
+		break;
 	default:
 		return false;
 	}
@@ -132,7 +137,9 @@ bool ShaderCode::CreateShader( ShaderType type, const std::string& src )
 }
 
 Shader::Shader()
+	: programID(0), lastError("")
 {
+	shaderCodes[0] = shaderCodes[1] = shaderCodes[2] = shaderCodes[3] = shaderCodes[4] = 0;
 }
 
 Shader::~Shader()
@@ -196,10 +203,22 @@ std::vector<UniformData> Shader::GetAllUniforms() const
 
 	glGetProgramiv( programID, GL_ACTIVE_UNIFORMS, &count );
 
+	const int bufsize = 256;
+	char name[bufsize];
+	int length;
+	int size;
+	unsigned int type;
 	for (int i = 0; i < count; i++)
 	{
+		glGetActiveUniform(programID, i, bufsize, &length, &size, &type, name);
+		UniformData data;
+		data.name = name;
+		data.type = GetUniformType(type);
 
+		uniforms.push_back(data);
 	}
+
+	return uniforms;
 }
 
 //Uniforms from name

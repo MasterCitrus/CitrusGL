@@ -1,4 +1,5 @@
 #include "Mesh.h"
+#include "Material.h"
 #include "Shader.h"
 
 #include <glad/glad.h>
@@ -11,7 +12,9 @@ Mesh::Mesh( std::vector<Vertex> vertices, std::vector<unsigned int> indices, std
 
 void Mesh::Draw( Shader& shader )
 {
-
+	glBindVertexArray(VAO);
+	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
 }
 
 void Mesh::Initialise()
@@ -46,5 +49,5 @@ void Mesh::Initialise()
 	glVertexAttribIPointer( 5, 3, GL_INT, sizeof( Vertex ), (void*)offsetof( Vertex, boneIDs ) );
 
 	glEnableVertexAttribArray( 6 );
-	glVertexAttribPointer( 6, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)offsetof( Vertex, boneWeights ) );
+	glVertexAttribPointer( 6, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)offsetof( Vertex, weights ) );
 }

@@ -13,7 +13,10 @@ Model::~Model()
 
 void Model::Draw( Shader& shader )
 {
-
+	for (auto& mesh : meshes)
+	{
+		mesh.Draw(shader);
+	}
 }
 
 void Model::LoadModel( const std::string& path )
@@ -141,7 +144,7 @@ void Model::ExtractBoneWeightForVertices( std::vector<Vertex>& vertices, aiMesh*
 			boneID = boneMap[boneName].ID;
 		}
 
-		assert( boneID != 0 );
+		assert( boneID != -1 );
 
 		auto weights = bone->mWeights;
 		int numWeights = bone->mNumWeights;

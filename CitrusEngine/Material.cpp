@@ -4,10 +4,10 @@
 
 #include <glad/glad.h>
 
-Material::Material( Shader* shader )
+Material::Material( Shader& shader )
 	: shader(shader)
 {
-
+	
 }
 
 Material::~Material()
@@ -47,42 +47,42 @@ void Material::SetVec( const std::string& name, glm::vec4& value )
 
 void Material::Apply()
 {
-	shader->Bind();
+	shader.Bind();
 
 	for (const auto& [name, value] : floatParams)
 	{
-		shader->SetFloat( name, value );
+		shader.SetFloat( name, value );
 	}
 
 	for (const auto& [name, value] : intParams)
 	{
-		shader->SetInt( name, value );
+		shader.SetInt( name, value );
 	}
 
 	for (const auto& [name, value] : boolParams)
 	{
-		shader->SetBool( name, value );
+		shader.SetBool( name, value );
 	}
 
 	for (const auto& [name, value] : vec2Params)
 	{
-		shader->SetVec( name, value );
+		shader.SetVec( name, value );
 	}
 
 	for (const auto& [name, value] : vec3Params)
 	{
-		shader->SetVec( name, value );
+		shader.SetVec( name, value );
 	}
 
 	for (auto const& [name, value] : vec4Params)
 	{
-		shader->SetVec( name, value );
+		shader.SetVec( name, value );
 	}
 
 	for (auto const& [name, value] : textureParams)
 	{
 		glActiveTexture( GL_TEXTURE0 + value.textureUnit );
 		glBindTexture( GL_TEXTURE_2D, value.textureID );
-		shader->SetInt( name, value.textureUnit );
+		shader.SetInt( name, value.textureUnit );
 	}
 }

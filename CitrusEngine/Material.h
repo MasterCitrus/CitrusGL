@@ -25,7 +25,7 @@ typedef std::map<std::string, TextureParam> TexParams;
 class Material
 {
 public:
-	Material( Shader* shader );
+	Material( Shader& shader );
 	~Material();
 
 	void SetBool( const std::string& name, bool value );
@@ -37,7 +37,7 @@ public:
 
 	void Apply();
 
-	Shader* GetShader() const { return shader; }
+	Shader& GetShader() const { return shader; }
 
 private:
 	FloatParams floatParams;
@@ -47,6 +47,6 @@ private:
 	Vec3Params vec3Params;
 	Vec4Params vec4Params;
 	TexParams textureParams;
-	Shader* shader;
+	Shader& shader;
 };
 

@@ -1,5 +1,8 @@
 #pragma once
 #include "Application.h"
+#include "AssetManager.h"
+#include "Model.h"
+#include "Camera.h"
 
 class ModelViewer : public Application
 {
@@ -20,6 +23,10 @@ protected:
 	bool OnMouseButtonPressed( MouseButtonPressedEvent& e ) override;
 
 private:
+	AssetManager assetManager;
+	Model* testModel;
+	Shader shader;
+	Camera* camera;
 	bool viewportFocused;
 	bool viewportHovered;
 };

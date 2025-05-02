@@ -19,7 +19,7 @@ Texture::Texture( const std::string& filePath, TextureType type )
 Texture::Texture( unsigned int width, unsigned int height, TextureType type, TextureFormat format, unsigned char* pixels )
 	: textureID( 0 ), path( "none" ) , type(type)
 {
-	Create( width, height, type, pixels );
+	Create( width, height, type, format, pixels );
 }
 
 Texture::~Texture()
@@ -122,7 +122,7 @@ bool Texture::Create( unsigned int width, unsigned int height, TextureType type,
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-	glTExParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
 
 	switch (format)
 	{
