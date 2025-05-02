@@ -89,7 +89,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include/assimp;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dep/stb;$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -106,7 +106,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include/assimp;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dep/stb;$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -123,7 +123,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include/assimp;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dep/stb;$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,7 +140,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include/assimp;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dep/stb;$(SolutionDir)Dep/nfde/src/include;$(SolutionDir)Dep/assimp/include;$(SolutionDir)Dep/imguizmo;$(SolutionDir)Dep/imgui;$(SolutionDir)Dep/glad/include;$(SolutionDir)Dep/glm;$(SolutionDir)Dep/GLFW/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -159,20 +159,44 @@
     <ClCompile Include="..\Dep\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\Dep\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\Dep\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="Animation.cpp" />
+    <ClCompile Include="Animator.cpp" />
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="Bone.cpp" />
+    <ClCompile Include="BoneInfo.cpp" />
     <ClCompile Include="GraphicsContext.cpp" />
+    <ClCompile Include="Light.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Material.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Model.cpp" />
     <ClCompile Include="ModelViewer.cpp" />
+    <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Animation.h" />
+    <ClInclude Include="Animator.h" />
     <ClInclude Include="Application.h" />
+    <ClInclude Include="Bone.h" />
+    <ClInclude Include="BoneInfo.h" />
     <ClInclude Include="Events\ApplicationEvent.h" />
     <ClInclude Include="Events\Event.h" />
     <ClInclude Include="Events\KeyEvent.h" />
     <ClInclude Include="Events\MouseEvent.h" />
     <ClInclude Include="GraphicsContext.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="ModelViewer.h" />
+    <ClInclude Include="Shader.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="Utils.h" />
+    <ClInclude Include="Vertex.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
