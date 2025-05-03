@@ -29,7 +29,7 @@ bool ModelViewer::Initialise()
 		std::cout << "Shader link error: " << shader.GetLastError() << '\n';
 		return false;
 	}
-	testModel = new Model("Assets/Models/Person.gltf");
+	testModel = new Model("Assets/Models/soulspear.obj");
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -38,7 +38,8 @@ bool ModelViewer::Initialise()
 
 void ModelViewer::Shutdown()
 {
-
+	delete camera;
+	delete testModel;
 }
 
 void ModelViewer::Update( float delta )
@@ -62,7 +63,7 @@ void ModelViewer::Draw()
 	shader.SetVec("lightColour", lightColour);
 
 	shader.SetVec("material.ambient", { 0.2f, 0.2f, 0.2f });
-	shader.SetVec("material.diffuse", { 0.8f, 0.2f, 0.8f });
+	shader.SetVec("material.diffuse", { 0.8f, 0.8f, 0.8f });
 	shader.SetVec("material.specular", { 0.0f, 0.0f, 0.0f });
 	shader.SetFloat("material.shininess", 10);
 

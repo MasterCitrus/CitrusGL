@@ -17,72 +17,81 @@ Material::~Material()
 
 void Material::SetBool( const std::string& name, bool value )
 {
-	boolParams[name] = value;
+	materialProperties[name].value = value;
 }
 
 void Material::SetInt( const std::string& name, int value )
 {
-	intParams[name] = value;
+	materialProperties[name].value = value;
 }
 
 void Material::SetFloat( const std::string& name, float value )
 {
-	floatParams[name] = value;
+	materialProperties[name].value = value;
 }
 
 void Material::SetVec( const std::string& name, glm::vec2& value )
 {
-	vec2Params[name] = value;
+	materialProperties[name].value = value;
 }
 
 void Material::SetVec( const std::string& name, glm::vec3& value )
 {
-	vec3Params[name] = value;
+	materialProperties[name].value = value;
 }
 
 void Material::SetVec( const std::string& name, glm::vec4& value )
 {
-	vec4Params[name] = value;
+	materialProperties[name].value = value;
 }
 
 void Material::Apply()
 {
 	shader.Bind();
 
-	for (const auto& [name, value] : floatParams)
+	for (const auto& [name, prop] : materialProperties)
 	{
-		shader.SetFloat( name, value );
-	}
-
-	for (const auto& [name, value] : intParams)
-	{
-		shader.SetInt( name, value );
-	}
-
-	for (const auto& [name, value] : boolParams)
-	{
-		shader.SetBool( name, value );
-	}
-
-	for (const auto& [name, value] : vec2Params)
-	{
-		shader.SetVec( name, value );
-	}
-
-	for (const auto& [name, value] : vec3Params)
-	{
-		shader.SetVec( name, value );
-	}
-
-	for (auto const& [name, value] : vec4Params)
-	{
-		shader.SetVec( name, value );
-	}
-
-	for (auto const& [name, value] : textureParams)
-	{
-		glActiveTexture( GL_TEXTURE0 + value.textureUnit );
-		glBindTexture( GL_TEXTURE_2D, value.textureID );
-		shader.SetInt( name, value.textureUnit );
+		if (std::holds_alternative<int>(prop.value))
+		{
+			shader.SetInt(prop.name, std::get<int>(prop.value));
+		}
+		else if (std::holds_alternative<float>(prop.value))
+		{
+			shader.SetFloat(prop.name, std::get<float>(prop.value));
+		}
+		else if (std::holds_alternative<bool>(prop.value))
+		{
+			shader.SetBool(prop.name, std::get<bool>(prop.value));
+		}
+		else if (std::holds_alternative<glm::vec2>(prop.value))
+		{
+			shader.SetVec(prop.name, std::get<glm::vec2>(prop.value));
+		}
+		else if (std::holds_alternative<glm::vec3>(prop.value))
+		{
+			shader.SetVec(prop.name, std::get<glm::vec3>(prop.value));
+		}
+		else if (std::holds_alternative<glm::vec4>(prop.value))
+		{
+			shader.SetVec(prop.name, std::get<glm::vec4>(prop.value));
+		}
+		else if (std::holds_alternative<Texture>(prop.value))
+		{
+			auto thing = std::get<Texture>(prop.value);
+			int textureUnit = 0;
+			switch (thing.GetTextureType())
+			{
+			case TextureType::DIFFUSE:
+				textureUnit = 0;
+				break;
+			case TextureType::SPECULAR:
+				textureUnit = 1;
+				break;
+			case TextureType::NORMAL:
+				textureUnit = 0;
+				break;
+			}
+			shader.SetInt(prop.name, textureUnit);
+		}
 	}
 }

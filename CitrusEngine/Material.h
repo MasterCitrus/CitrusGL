@@ -5,22 +5,15 @@
 #include <glm/glm.hpp>
 
 #include <map>
+#include <variant>
 
 class Shader;
 
-struct TextureParam
+struct MaterialProperty
 {
-	int textureID;
-	int textureUnit;
+	std::string name;
+	std::variant<bool, float, int, glm::vec2, glm::vec3, glm::vec4, Texture> value;
 };
-
-typedef std::map<std::string, float> FloatParams;
-typedef std::map<std::string, int> IntParams;
-typedef std::map<std::string, bool> BoolParams;
-typedef std::map<std::string, glm::vec2> Vec2Params;
-typedef std::map<std::string, glm::vec3> Vec3Params;
-typedef std::map<std::string, glm::vec4> Vec4Params;
-typedef std::map<std::string, TextureParam> TexParams;
 
 class Material
 {
@@ -40,13 +33,7 @@ public:
 	Shader& GetShader() const { return shader; }
 
 private:
-	FloatParams floatParams;
-	IntParams intParams;
-	BoolParams boolParams;
-	Vec2Params vec2Params;
-	Vec3Params vec3Params;
-	Vec4Params vec4Params;
-	TexParams textureParams;
+	std::map<std::string, MaterialProperty> materialProperties;
 	Shader& shader;
 };
 

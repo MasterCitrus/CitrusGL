@@ -28,6 +28,8 @@ public:
 
 	void Draw( Shader& shader );
 
+	std::vector<Mesh>& GetMeshes() { return meshes; }
+
 private:
 	void LoadModel( const std::string& path );
 

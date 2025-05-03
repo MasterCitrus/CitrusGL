@@ -2,6 +2,7 @@
 
 in vec3 FragPos;
 in vec3 FragNormal;
+in vec2 FragTexCoord;
 
 out vec4 FragColour;
 
@@ -11,6 +12,10 @@ struct Material
     vec3 diffuse;
     vec3 specular;
     float shininess;
+
+    sampler2D diffuseTex;
+    sampler2D speculatTex;
+    sampler2D normalTex;
 };
 
 uniform Material material;

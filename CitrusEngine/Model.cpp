@@ -22,6 +22,7 @@ void Model::Draw( Shader& shader )
 void Model::LoadModel( const std::string& path )
 {
 	Assimp::Importer import;
+	import.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 	const aiScene* scene = import.ReadFile( path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace );
 
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
@@ -123,7 +124,7 @@ void Model::ExtractBoneWeightForVertices( std::vector<Vertex>& vertices, aiMesh*
 	auto& boneMap = boneInfoMap;
 	int& boneCount = this->boneCount;
 
-	for (int bIndex = 0; bIndex < mesh->mNumBones; ++bIndex)
+	for (unsigned int bIndex = 0; bIndex < mesh->mNumBones; ++bIndex)
 	{
 		aiBone* bone = mesh->mBones[bIndex];
 
