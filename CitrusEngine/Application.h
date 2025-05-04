@@ -23,6 +23,8 @@ public:
 
 	virtual void OnEvent(Event& e);
 
+	void Quit() { running = false; }
+
 	bool& GetFullscreen() { return fullscreen; }
 	Window& GetWindow() { return *window; }
 	unsigned int GetFPS() const { return fps; }

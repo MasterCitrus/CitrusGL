@@ -4,14 +4,16 @@
 
 #include <glad/glad.h>
 
-Mesh::Mesh( std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures )
-	: vertices(vertices), indices(indices), textures(textures)
+Mesh::Mesh( const std::string& name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material* material )
+	: vertices(vertices), indices(indices), material(material), name(name)
 {
 	Initialise();
 }
 
-void Mesh::Draw( Shader& shader )
+void Mesh::Draw()
 {
+	material->Apply();
+
 	glBindVertexArray(VAO);
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
@@ -40,13 +42,13 @@ void Mesh::Initialise()
 	glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)offsetof( Vertex, texCoord ) );
 
 	glEnableVertexAttribArray( 3 );
-	glVertexAttribPointer( 3, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)offsetof( Vertex, tangent ) );
+	glVertexAttribPointer( 3, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)offsetof( Vertex, tangent ) );
 
 	glEnableVertexAttribArray( 4 );
 	glVertexAttribPointer( 4, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)offsetof( Vertex, biTangent ) );
 
 	glEnableVertexAttribArray( 5 );
-	glVertexAttribIPointer( 5, 3, GL_INT, sizeof( Vertex ), (void*)offsetof( Vertex, boneIDs ) );
+	glVertexAttribIPointer( 5, 4, GL_INT, sizeof( Vertex ), (void*)offsetof( Vertex, boneIDs ) );
 
 	glEnableVertexAttribArray( 6 );
 	glVertexAttribPointer( 6, 4, GL_FLOAT, GL_FALSE, sizeof( Vertex ), (void*)offsetof( Vertex, weights ) );

@@ -166,6 +166,7 @@
     <ClCompile Include="Bone.cpp" />
     <ClCompile Include="BoneInfo.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="GraphicsContext.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Light.cpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="Events\Event.h" />
     <ClInclude Include="Events\KeyEvent.h" />
     <ClInclude Include="Events\MouseEvent.h" />
+    <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="GraphicsContext.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Key.h" />

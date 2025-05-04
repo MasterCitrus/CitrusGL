@@ -17,32 +17,60 @@ Material::~Material()
 
 void Material::SetBool( const std::string& name, bool value )
 {
-	materialProperties[name].value = value;
+	MaterialProperty prop;
+	prop.name = name;
+	prop.value = value;
+	materialProperties[name] = prop;
 }
 
 void Material::SetInt( const std::string& name, int value )
 {
-	materialProperties[name].value = value;
+	MaterialProperty prop;
+	prop.name = name;
+	prop.value = value;
+	materialProperties[name] = prop;
 }
 
 void Material::SetFloat( const std::string& name, float value )
 {
-	materialProperties[name].value = value;
+	MaterialProperty prop;
+	prop.name = name;
+	prop.value = value;
+	materialProperties[name] = prop;
 }
 
-void Material::SetVec( const std::string& name, glm::vec2& value )
+void Material::SetTexture(const std::string& name, Texture* value)
 {
-	materialProperties[name].value = value;
+	MaterialProperty prop;
+	prop.name = name;
+	prop.value = value;
+	materialProperties[name] = prop;
 }
 
-void Material::SetVec( const std::string& name, glm::vec3& value )
+void Material::SetVec( const std::string& name, const glm::vec2& value )
 {
-	materialProperties[name].value = value;
+	MaterialProperty prop;
+	prop.name = name;
+	prop.value = value;
+	materialProperties[name] = prop;
 }
 
-void Material::SetVec( const std::string& name, glm::vec4& value )
+void Material::SetVec( const std::string& name, const glm::vec3& value, bool isColour )
 {
-	materialProperties[name].value = value;
+	MaterialProperty prop;
+	prop.name = name;
+	prop.value = value;
+	prop.isColour = isColour;
+	materialProperties[name] = prop;
+}
+
+void Material::SetVec( const std::string& name, const glm::vec4& value, bool isColour )
+{
+	MaterialProperty prop;
+	prop.name = name;
+	prop.value = value;
+	prop.isColour = isColour;
+	materialProperties[name] = prop;
 }
 
 void Material::Apply()
@@ -75,11 +103,11 @@ void Material::Apply()
 		{
 			shader.SetVec(prop.name, std::get<glm::vec4>(prop.value));
 		}
-		else if (std::holds_alternative<Texture>(prop.value))
+		else if (std::holds_alternative<Texture*>(prop.value))
 		{
-			auto thing = std::get<Texture>(prop.value);
+			auto tex = std::get<Texture*>(prop.value);
 			int textureUnit = 0;
-			switch (thing.GetTextureType())
+			switch (tex->GetTextureType())
 			{
 			case TextureType::DIFFUSE:
 				textureUnit = 0;
@@ -88,10 +116,11 @@ void Material::Apply()
 				textureUnit = 1;
 				break;
 			case TextureType::NORMAL:
-				textureUnit = 0;
+				textureUnit = 2;
 				break;
 			}
 			shader.SetInt(prop.name, textureUnit);
+			tex->Bind(textureUnit);
 		}
 	}
 }

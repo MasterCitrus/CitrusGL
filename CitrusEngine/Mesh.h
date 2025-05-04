@@ -4,6 +4,7 @@
 #include "Texture.h"
 #include "Vertex.h"
 
+#include <string>
 #include <vector>
 
 class Material;
@@ -12,12 +13,15 @@ class Shader;
 class Mesh
 {
 public:
-	Mesh( std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures );
+	Mesh( const std::string& name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material* material );
 
-	void Draw(Shader& shader);
+	void Draw();
+
+	void SetMaterial(Material* material) { this->material = material; }
 
 	std::vector<Vertex>& GetVertices() { return vertices; }
 	Material* GetMaterial() { return material; }
+	std::string GetName() const { return name; }
 
 private:
 	void Initialise();
@@ -25,7 +29,7 @@ private:
 private:
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
-	std::vector<Texture> textures;
+	std::string name;
 	Material* material;
 	unsigned int VAO, VBO, IBO;
 };

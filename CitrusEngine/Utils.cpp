@@ -38,6 +38,19 @@ glm::quat GetGLMQuat( const aiQuaternion& quat )
 	return glm::quat( quat.w, quat.x, quat.y, quat.z );
 }
 
+TextureType GetTextureType(aiTextureType type)
+{
+	switch (type)
+	{
+	case aiTextureType_DIFFUSE:
+		return TextureType::DIFFUSE;
+	case aiTextureType_SPECULAR:
+		return TextureType::SPECULAR;
+	case aiTextureType_HEIGHT:
+		return TextureType::NORMAL;
+	}
+}
+
 std::string GetGLType( unsigned int type )
 {
 	switch (type)

@@ -3,6 +3,9 @@
 #include "AssetManager.h"
 #include "Model.h"
 #include "Camera.h"
+#include "Framebuffer.h"
+
+struct MaterialProperty;
 
 class ModelViewer : public Application
 {
@@ -26,8 +29,13 @@ private:
 	AssetManager assetManager;
 	Model* testModel;
 	Shader shader;
+	Framebuffer* framebuffer;
 	Camera* camera;
 	bool viewportFocused;
 	bool viewportHovered;
+
+	//ImGui Variables
+	int selectedMesh = 0;
+	int selectedMatProp = 0;
 };
 

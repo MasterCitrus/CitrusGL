@@ -1,9 +1,11 @@
 #include "Model.h"
+#include "Shader.h"
+#include "Texture.h"
 #include "Utils.h"
 
-Model::Model( const std::string& path )
+Model::Model( const std::string& path, Shader& shader )
 {
-	LoadModel( path );
+	LoadModel( path, shader );
 }
 
 Model::~Model()
@@ -11,15 +13,15 @@ Model::~Model()
 
 }
 
-void Model::Draw( Shader& shader )
+void Model::Draw()
 {
 	for (auto& mesh : meshes)
 	{
-		mesh.Draw(shader);
+		mesh.Draw();
 	}
 }
 
-void Model::LoadModel( const std::string& path )
+void Model::LoadModel( const std::string& path, Shader& shader )
 {
 	Assimp::Importer import;
 	import.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
@@ -33,28 +35,29 @@ void Model::LoadModel( const std::string& path )
 
 	this->path = path.substr( 0, path.find_last_of( "/\\" ) );
 
-	ProcessNode( scene->mRootNode, scene );
+	ProcessNode( scene->mRootNode, scene, shader );
 }
 
-void Model::ProcessNode( aiNode* node, const aiScene* scene )
+void Model::ProcessNode( aiNode* node, const aiScene* scene, Shader& shader )
 {
 	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-		meshes.push_back( ProcessMesh( mesh, scene ) );
+		meshes.push_back( ProcessMesh( mesh, scene, shader ) );
 	}
 
 	for (unsigned int i = 0; i < node->mNumChildren; i++)
 	{
-		ProcessNode( node->mChildren[i], scene );
+		ProcessNode( node->mChildren[i], scene, shader );
 	}
 }
 
-Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene )
+Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
 {
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
-	std::vector<Texture> textures;
+	std::vector<Texture*> textures;
+
 
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 	{
@@ -66,6 +69,7 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene )
 		if (mesh->mTextureCoords[0])
 		{
 			vertex.texCoord = GetGLMVec( mesh->mTextureCoords[0][i] );
+			vertex.texCoord.y = 1.0 - vertex.texCoord.y;
 		}
 		else
 		{
@@ -74,7 +78,7 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene )
 
 		if (mesh->HasTangentsAndBitangents())
 		{
-			vertex.tangent = GetGLMVec( mesh->mTangents[i] );
+			vertex.tangent = { GetGLMVec(mesh->mTangents[i]), 1.0 };
 			vertex.biTangent = GetGLMVec( mesh->mBitangents[i] );
 		}
 
@@ -90,11 +94,58 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene )
 		}
 	}
 
-	//Put materials here?
+	Material* material = new Material(shader);
+	if (scene->HasMaterials())
+	{
+		aiColor3D diffuse;
+		aiColor3D specular;
+		aiColor3D ambient;
+		float shininess = 0.0f;
+
+		aiMaterial* mat = scene->mMaterials[mesh->mMaterialIndex];
+
+		//Material Properties
+		mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+		mat->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+		mat->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
+		mat->Get(AI_MATKEY_SHININESS, shininess);
+
+		material->SetVec("material.ambient", GetGLMVec(ambient), true);
+		material->SetVec("material.diffuse", GetGLMVec(diffuse), true);
+		material->SetVec("material.specular", GetGLMVec(specular));
+		material->SetFloat("material.shininess", shininess);
+
+		//Textures
+		std::vector<Texture*> diffuseMaps = LoadMaterialTextures(mat, aiTextureType_DIFFUSE);
+		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+
+		std::vector<Texture*> specularMaps = LoadMaterialTextures(mat, aiTextureType_SPECULAR);
+		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+
+		std::vector<Texture*> normalMaps = LoadMaterialTextures(mat, aiTextureType_HEIGHT);
+		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+
+		for (auto texture : textures)
+		{
+			switch (texture->GetTextureType())
+			{
+			case TextureType::DIFFUSE:
+				material->SetTexture("material.diffuseTex", texture);
+				break;
+			case TextureType::SPECULAR:
+				material->SetTexture("material.specularTex", texture);
+				break;
+			case TextureType::NORMAL:
+				material->SetTexture("material.normalTex", texture);
+				break;
+			}
+		}
+	}
+
 
 	ExtractBoneWeightForVertices( vertices, mesh, scene );
 
-	return Mesh( vertices, indices, textures );
+	return Mesh( mesh->mName.C_Str(), vertices, indices, material );
 }
 
 void Model::SetVertexBoneDataToDefault( Vertex& vertex )
@@ -158,4 +209,36 @@ void Model::ExtractBoneWeightForVertices( std::vector<Vertex>& vertices, aiMesh*
 			SetVertexBoneData( vertices[vertexID], boneID, weight );
 		}
 	}
+}
+
+std::vector<Texture*> Model::LoadMaterialTextures(aiMaterial* mat, aiTextureType type)
+{
+	std::vector<Texture*> textures;
+
+	for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
+	{
+		aiString str;
+		mat->GetTexture(type, i, &str);
+
+		bool skip = false;
+		for (unsigned int j = 0; j < loadedTextures.size(); j++)
+		{
+			if (std::strcmp(loadedTextures[j]->GetFilePath().data(), str.C_Str()) == 0)
+			{
+				textures.push_back(loadedTextures[j]);
+				skip = true;
+				break;
+			}
+		}
+		if (!skip)
+		{
+			std::string filepath = path + '\\' + str.C_Str();
+			Texture* tex = new Texture(filepath, GetTextureType(type));
+
+			textures.push_back(tex);
+			loadedTextures.push_back(tex);
+		}
+	}
+
+	return textures;
 }

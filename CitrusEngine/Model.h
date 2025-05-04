@@ -23,26 +23,28 @@ struct aiMaterial;
 class Model
 {
 public:
-	Model( const std::string& path );
+	Model( const std::string& path, Shader& shader );
 	~Model();
 
-	void Draw( Shader& shader );
+	void Draw();
 
 	std::vector<Mesh>& GetMeshes() { return meshes; }
 
 private:
-	void LoadModel( const std::string& path );
+	void LoadModel( const std::string& path, Shader& shader );
 
-	void ProcessNode(aiNode* node, const aiScene* scene);
-	Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
+	void ProcessNode(aiNode* node, const aiScene* scene, Shader& shader);
+	Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene, Shader& shader);
 
 	void SetVertexBoneDataToDefault( Vertex& vertex );
 	void SetVertexBoneData( Vertex& vertex, int boneID, float weight );
 	void ExtractBoneWeightForVertices( std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene );
 
+	std::vector<Texture*> LoadMaterialTextures(aiMaterial* mat, aiTextureType type);
+
 private:
 	std::vector<Mesh> meshes;
-	std::vector<Texture> loadedTextures;
+	std::vector<Texture*> loadedTextures;
 	std::map<std::string, BoneInfo> boneInfoMap;
 	std::string path;
 	int boneCount = 0;

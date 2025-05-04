@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Texture.h"
 #include "UniformData.h"
 
 #include <string>
@@ -16,6 +17,7 @@
 #include "assimp/quaternion.h"
 #include <assimp/vector2.h>
 #include <assimp/vector3.h>
+#include <assimp/material.h>
 
 //ASSIMP CONVERSIONS
 
@@ -29,6 +31,9 @@
  glm::mat4 GetGLMMat( const aiMatrix4x4& from );
 //Quaternion
  glm::quat GetGLMQuat( const aiQuaternion& quat );
+
+ //Texture Type
+ TextureType GetTextureType(aiTextureType type);
 
 //OPENGL UTILITIES
 

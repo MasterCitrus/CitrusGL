@@ -44,6 +44,7 @@ public:
 	TextureFormat GetTextureFormat() const { return format; }
 	unsigned int GetWidth() const { return width; }
 	unsigned int GetHeight() const { return height; }
+	unsigned int GetTextureID() const { return textureID; }
 	unsigned char* GetPixels() const { return pixels; }
 
 private:
