@@ -29,7 +29,11 @@ protected:
 	bool OnMouseButtonPressed( MouseButtonPressedEvent& e ) override;
 
 private:
+	std::vector<Material*> CreateMaterials() const;
+
+private:
 	std::vector<PointLight*> lights;
+	std::vector<Material*> materials;
 	DirectionLight* sun;
 	AssetManager assetManager;
 	Model* testModel;

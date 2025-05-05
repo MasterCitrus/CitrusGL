@@ -65,6 +65,8 @@ bool ModelViewer::Initialise()
 	lights.push_back(l2);
 	lights.push_back(l3);
 
+	materials = CreateMaterials();
+
 	glEnable(GL_DEPTH_TEST);
 
 	return true;
@@ -74,6 +76,10 @@ void ModelViewer::Shutdown()
 {
 	delete camera;
 	delete testModel;
+
+	for (auto& light : lights) delete light;
+
+	for (auto& mat : materials) delete mat;
 }
 
 void ModelViewer::Update( float delta )
@@ -432,4 +438,68 @@ bool ModelViewer::OnKeyPressed( KeyPressedEvent& e )
 bool ModelViewer::OnMouseButtonPressed( MouseButtonPressedEvent& e )
 {
 	return false;
+}
+
+std::vector<Material*> ModelViewer::CreateMaterials() const
+{
+	std::vector<Material*> temp;
+
+	//Red
+	Material* redMat = new Material(skinnedMeshShader);
+	redMat->SetVec("material.ambient", {0.02f, 0.02f, 0.02f}, true);
+	redMat->SetVec("material.diffuse", {1.0f, 0.0f, 0.0f}, true);
+	redMat->SetVec("material.specular", {0.05f, 0.05f, 0.05f}, false);
+	redMat->SetFloat("material.shininess", 50);
+	temp.push_back(redMat);
+	//Green
+	Material* greenMat = new Material(skinnedMeshShader);
+	greenMat->SetVec("material.ambient", {0.02f, 0.02f, 0.02f}, true);
+	greenMat->SetVec("material.diffuse", {0.0f, 1.0f, 0.0f}, true);
+	greenMat->SetVec("material.specular", {0.05f, 0.05f, 0.05f}, false);
+	greenMat->SetFloat("material.shininess", 50);
+	temp.push_back(blueMat);
+	//Blue
+	Material* blueMat = new Material(skinnedMeshShader);
+	blueMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
+	blueMat->SetVec("material.diffuse", { 0.0f, 0.0f, 1.0f }, true);
+	blueMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
+	blueMat->SetFloat("material.shininess", 50);
+	temp.push_back(greenMat);
+	//Yellow
+	Material* yellowMat = new Material(skinnedMeshShader);
+	yellowMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
+	yellowMat->SetVec("material.diffuse", { 1.0f, 1.0f, 0.0f }, true);
+	yellowMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
+	yellowMat->SetFloat("material.shininess", 50);
+	temp.push_back(yellowMat);
+	//Pink
+	Material* pinkMat = new Material(skinnedMeshShader);
+	pinkMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
+	pinkMat->SetVec("material.diffuse", { 1.0f, 0.0f, 1.0f }, true);
+	pinkMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
+	pinkMat->SetFloat("material.shininess", 50);
+	temp.push_back(pinkMat);
+	//Cyan
+	Material* cyanMat = new Material(skinnedMeshShader);
+	cyanMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
+	cyanMat->SetVec("material.diffuse", { 0.0f, 1.0f, 1.0f }, true);
+	cyanMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
+	cyanMat->SetFloat("material.shininess", 50);
+	temp.push_back(cyanMat);
+	//White
+	Material* whiteMat = new Material(skinnedMeshShader);
+	whiteMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
+	whiteMat->SetVec("material.diffuse", { 1.0f, 1.0f, 1.0f }, true);
+	whiteMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
+	whiteMat->SetFloat("material.shininess", 50);
+	temp.push_back(whiteMat);
+	//Black
+	Material* blackMat = new Material(skinnedMeshShader);
+	blackMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
+	blackMat->SetVec("material.diffuse", { 0.0f, 0.0f, 0.0f }, true);
+	blackMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
+	blackMat->SetFloat("material.shininess", 50);
+	temp.push_back(blackMat);
+
+	return temp;
 }

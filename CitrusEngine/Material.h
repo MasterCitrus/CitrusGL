@@ -19,7 +19,7 @@ struct MaterialProperty
 class Material
 {
 public:
-	Material( Shader& shader );
+	Material(const Shader& shader );
 	~Material();
 
 	void SetBool( const std::string& name, bool value );
