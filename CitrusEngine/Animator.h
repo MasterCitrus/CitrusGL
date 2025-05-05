@@ -7,6 +7,8 @@
 class Animation;
 struct NodeData;
 
+const int MAX_BONES = 100;
+
 class Animator
 {
 public:

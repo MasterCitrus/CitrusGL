@@ -116,4 +116,5 @@ struct UniformData
 {
 	std::string name;
 	UniformType type;
+	int id;
 };

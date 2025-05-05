@@ -160,33 +160,33 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
 		std::vector<Texture*> diffuseMaps = LoadMaterialTextures(mat, aiTextureType_DIFFUSE);
 		if( diffuseMaps.empty() )
 		{
-			unsigned char pixels[] = {255, 255, 255, 255};
-			unsigned int width = 1;
-			unsigned int height = 1;
-			Texture* tex = new Texture(width, height, TextureType::DIFFUSE, TextureFormat::RGBA, pixels);
-			diffuseMaps.push_back(tex);
+			material->SetBool("material.useDiffuseTex", false);
+		}
+		else
+		{
+			material->SetBool("material.useDiffuseTex", true);
 		}
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
 		std::vector<Texture*> specularMaps = LoadMaterialTextures(mat, aiTextureType_SPECULAR);
 		if( specularMaps.empty() )
 		{
-			unsigned char pixels[] = { 0, 0, 0, 0 };
-			unsigned int width = 1;
-			unsigned int height = 1;
-			Texture* tex = new Texture(width, height, TextureType::SPECULAR, TextureFormat::RGB, pixels);
-			specularMaps.push_back(tex);
+			material->SetBool("material.useSpecularTex", false);
+		}
+		else
+		{
+			material->SetBool("material.useSpecularTex", true);
 		}
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
 		std::vector<Texture*> normalMaps = LoadMaterialTextures(mat, aiTextureType_HEIGHT);
 		if( normalMaps.empty() )
 		{
-			unsigned char pixels[] = { 128, 128, 255 };
-			unsigned int width = 1;
-			unsigned int height = 1;
-			Texture* tex = new Texture(width, height, TextureType::NORMAL, TextureFormat::RGBA, pixels);
-			normalMaps.push_back(tex);
+			material->SetBool("material.useNormalTex", false);
+		}
+		else
+		{
+			material->SetBool("material.useNormalTex", true);
 		}
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 

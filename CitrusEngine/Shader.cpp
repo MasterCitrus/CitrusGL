@@ -174,6 +174,8 @@ bool Shader::Link()
 		return false;
 	}
 
+	uniforms = GetAllUniforms();
+
 	return true;
 }
 
@@ -214,6 +216,7 @@ std::vector<UniformData> Shader::GetAllUniforms() const
 		UniformData data;
 		data.name = name;
 		data.type = GetUniformType(type);
+		data.id = GetUniform(name);
 
 		uniforms.push_back(data);
 	}
@@ -224,6 +227,7 @@ std::vector<UniformData> Shader::GetAllUniforms() const
 //Uniforms from name
 void Shader::SetBool( const std::string& name, bool value )
 {
+	
 	glUniform1i( glGetUniformLocation( programID, name.c_str()), (int)value );
 }
 

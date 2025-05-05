@@ -37,6 +37,7 @@ private:
 	Shader skinnedMeshShader;
 	Framebuffer* framebuffer;
 	Camera* camera;
+	MaterialProperty* prop;
 	bool viewportFocused;
 	bool viewportHovered;
 

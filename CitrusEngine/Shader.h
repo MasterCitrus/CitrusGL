@@ -56,8 +56,6 @@ public:
 
 	int GetUniform( const std::string& name ) const;
 
-	std::vector<UniformData> GetAllUniforms() const;
-
 	//Setting Uniforms
 	//With name
 	void SetBool( const std::string& name, bool value );
@@ -94,6 +92,10 @@ public:
 	void SetMat( int ID, const glm::mat4& value );
 
 private:
+	std::vector<UniformData> GetAllUniforms() const;
+
+private:
+	std::vector<UniformData> uniforms;
 	std::string lastError;
 	std::shared_ptr<ShaderCode> shaderCodes[ShaderType::ShaderType_COUNT];
 	unsigned int programID;

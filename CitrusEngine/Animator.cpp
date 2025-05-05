@@ -7,9 +7,9 @@ Animator::Animator(Animation* animation)
 	currentTime = 0.0f;
 	currentAnimation = animation;
 
-	finalBoneMatrices.reserve(100);
+	finalBoneMatrices.reserve(MAX_BONES);
 
-	for( int i = 0; i < 100; i++ )
+	for( int i = 0; i < MAX_BONES; i++ )
 	{
 		finalBoneMatrices.push_back(glm::mat4(1.0f));
 	}

@@ -51,9 +51,19 @@ bool ModelViewer::Initialise()
 		return false;
 	}
 
-	testModel = new Model("Assets/Models/person.gltf", skinnedMeshShader);
+	testModel = new Model("Assets/Models/soulspear.obj", staticMeshShader);
 
 	framebuffer = new Framebuffer(GetWindow().GetWidth(), GetWindow().GetHeight());
+
+	prop = &testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().begin()->second;
+
+	PointLight* l1 = new PointLight({ -1.0, 2.0f, 1.0f }, { 0.05f, 0.05f, 0.05f }, { 1.0f, 0.0f, 0.0f }, { 0.5f, 0.5f, 0.5f });
+	PointLight* l2 = new PointLight({ 0.0, 2.0f, 1.0f }, { 0.05f, 0.05f, 0.05f }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.5f, 0.5f });
+	PointLight* l3 = new PointLight({ 1.0, 2.0f, 1.0f }, { 0.05f, 0.05f, 0.05f }, { 0.0f, 0.0f, 1.0f }, { 0.5f, 0.5f, 0.5f });
+
+	lights.push_back(l1);
+	lights.push_back(l2);
+	lights.push_back(l3);
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -97,8 +107,17 @@ void ModelViewer::Draw()
 	staticMeshShader.SetVec("dirLight.diffuse", sun->GetDiffuse());
 	staticMeshShader.SetVec("dirLight.specular", sun->GetSpecular());
 	staticMeshShader.SetVec("viewPos", camera->GetPosition());
-	
 
+	for (int i = 0; i < lights.size(); i++)
+	{
+		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].position"), lights[i]->GetPosition());
+		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].ambient"), lights[i]->GetAmbient());
+		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].diffuse"), lights[i]->GetDiffuse());
+		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].specular"), lights[i]->GetSpecular());
+		staticMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].linear"), lights[i]->GetLinear());
+		staticMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].quadratic"), lights[i]->GetQuadratic());
+	}
+	
 	staticMeshShader.SetMat("projection", camera->GetProjectionMatrix());
 	staticMeshShader.SetMat("view", camera->GetViewMatrix());
 
@@ -114,6 +133,16 @@ void ModelViewer::Draw()
 	skinnedMeshShader.SetVec("dirLight.diffuse", sun->GetDiffuse());
 	skinnedMeshShader.SetVec("dirLight.specular", sun->GetSpecular());
 	skinnedMeshShader.SetVec("viewPos", camera->GetPosition());
+
+	for (int i = 0; i < lights.size(); i++)
+	{
+		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].position"), lights[i]->GetPosition());
+		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].ambient"), lights[i]->GetAmbient());
+		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].diffuse"), lights[i]->GetDiffuse());
+		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].specular"), lights[i]->GetSpecular());
+		skinnedMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].linear"), lights[i]->GetLinear());
+		skinnedMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].quadratic"), lights[i]->GetQuadratic());
+	}
 
 	skinnedMeshShader.SetMat("projection", camera->GetProjectionMatrix());
 	skinnedMeshShader.SetMat("view", camera->GetViewMatrix());
@@ -196,7 +225,6 @@ void ModelViewer::ImGuiDraw()
 
 	bool infoPanelBool = true;
 	ImGui::Begin("InfoPanel", &infoPanelBool, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
-	static auto& prop = testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().begin()->second;
 	if (ImGui::BeginTabBar("Options"))
 	{
 		if (ImGui::BeginTabItem("Model Settings"))
@@ -230,63 +258,65 @@ void ModelViewer::ImGuiDraw()
 						if (ImGui::Selectable(it->first.c_str(), it->first == selectedProp->first))
 						{
 							selectedProp = it;
-							prop = it->second;
+							prop = &it->second;
 						}
 					}
 					ImGui::EndCombo();
 				}
 				ImGui::SeparatorText("Material Properties");
-				if (std::holds_alternative<int>(prop.value))
+				if (std::holds_alternative<int>((*prop).value))
 				{
-					ImGui::Text(prop.name.c_str());
-					ImGui::InputInt("##Int", &std::get<int>(prop.value));
+					ImGui::Text((*prop).name.c_str());
+					ImGui::InputInt("##Int", &std::get<int>((*prop).value));
 				}
-				else if (std::holds_alternative<float>(prop.value))
+				else if (std::holds_alternative<float>((*prop).value))
 				{
-					ImGui::Text(prop.name.c_str());
-					ImGui::InputFloat("##Float", &std::get<float>(prop.value));
+					ImGui::Text((*prop).name.c_str());
+					ImGui::InputFloat("##Float", &std::get<float>((*prop).value));
 				}
-				else if (std::holds_alternative<bool>(prop.value))
+				else if (std::holds_alternative<bool>((*prop).value))
 				{
-					ImGui::Text(prop.name.c_str());
-					ImGui::Checkbox("##Bool", &std::get<bool>(prop.value));
+					ImGui::Text((*prop).name.c_str());
+					ImGui::Checkbox("##Bool", &std::get<bool>((*prop).value));
 				}
-				else if (std::holds_alternative<glm::vec2>(prop.value))
+				else if (std::holds_alternative<glm::vec2>((*prop).value))
 				{
-					ImGui::Text(prop.name.c_str());
-					ImGui::InputFloat2("##Vec2", &std::get<glm::vec2>(prop.value)[0]);
+					ImGui::Text((*prop).name.c_str());
+					ImGui::InputFloat2("##Vec2", &std::get<glm::vec2>((*prop).value)[0]);
 				}
-				else if (std::holds_alternative<glm::vec3>(prop.value))
+				else if (std::holds_alternative<glm::vec3>((*prop).value))
 				{
-					if (prop.isColour)
+					if ((*prop).isColour)
 					{
-						ImGui::Text(prop.name.c_str());
-						ImGui::ColorPicker3("##Vec3", &std::get<glm::vec3>(prop.value)[0]);
+						ImGui::Text((*prop).name.c_str());
+						ImGui::ColorEdit3("##Vec3", &std::get<glm::vec3>((*prop).value)[0]);
 					}
 					else
 					{
-						ImGui::Text(prop.name.c_str());
-						ImGui::InputFloat3("##Vec3", &std::get<glm::vec3>(prop.value)[0]);
+						ImGui::Text((*prop).name.c_str());
+						ImGui::InputFloat3("##Vec3", &std::get<glm::vec3>((*prop).value)[0]);
 					}
 				}
-				else if (std::holds_alternative<glm::vec4>(prop.value))
+				else if (std::holds_alternative<glm::vec4>((*prop).value))
 				{
-					if (prop.isColour)
+					if ((*prop).isColour)
 					{
-						ImGui::Text(prop.name.c_str());
-						ImGui::ColorPicker4("##Vec4", &std::get<glm::vec4>(prop.value)[0]);
+						ImGui::Text((*prop).name.c_str());
+						ImGui::ColorEdit4("##Vec4", &std::get<glm::vec4>((*prop).value)[0]);
 					}
 					else
 					{
-						ImGui::Text(prop.name.c_str());
-						ImGui::InputFloat4("##Vec4", &std::get<glm::vec4>(prop.value)[0]);
+						ImGui::Text((*prop).name.c_str());
+						ImGui::InputFloat4("##Vec4", &std::get<glm::vec4>((*prop).value)[0]);
 					}
 				}
-				else if (std::holds_alternative<Texture*>(prop.value))
+				else if (std::holds_alternative<Texture*>((*prop).value))
 				{
-					ImGui::Text(prop.name.c_str());
-					ImGui::Image(std::get<Texture*>(prop.value)->GetTextureID(), {256, 256});
+					ImGui::Text((*prop).name.c_str());
+					ImGui::Image(std::get<Texture*>((*prop).value)->GetTextureID(), {256, 256});
 				}
+				ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.5f);
+				ImGui::Spacing();
 			}
 			if (ImGui::CollapsingHeader("Animations"))
 			{
@@ -316,43 +346,58 @@ void ModelViewer::ImGuiDraw()
 				ImGui::SeparatorText("Animation Properties");
 				ImGui::Text("Animation Name");
 				ImGui::InputText("##AnimationName", &testModel->GetAnimator()->GetCurrentAnimation()->GetName(), 0, InputTextResizeCallback);
+				ImGui::Text("Duration: %.2f", testModel->GetAnimator()->GetCurrentAnimation()->GetDuration() / testModel->GetAnimator()->GetCurrentAnimation()->GetTicksPerSecond());
 			}
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Scene Settings"))
 		{
-			ImGui::SeparatorText("Sun Light");
-			ImGui::Text("Direction");
-			ImGui::DragFloat3("##SunDirection", &sun->GetPosition()[0], 0.01f, -1.0f, 1.0f, "%.2f");
-			ImGui::Text("Ambient");
-			ImGui::ColorEdit3("##SunAmbient", &sun->GetAmbient()[0]);
-			ImGui::Text("Diffuse");
-			ImGui::ColorEdit3("##SunDiffuse", &sun->GetDiffuse()[0]);
-			ImGui::Text("Specular");
-			ImGui::DragFloat3("##SunSpecular", &sun->GetSpecular()[0], 0.01f, 0.0f, 1.0f, "%.2f");
-			ImGui::SeparatorText("Point Lights");
-			if( ImGui::BeginCombo("##PointLightList", lights.size() > 0 ? ("Light " + std::to_string(selectedLight + 1 )).c_str() : "") )
+			if(ImGui::CollapsingHeader("Lights"))
 			{
-				for( int i = 0; i < lights.size(); i++ )
+				ImGui::SeparatorText("Sun Light");
+				ImGui::Text("Direction");
+				ImGui::DragFloat3("##SunDirection", &sun->GetPosition()[0], 0.01f, -1.0f, 1.0f, "%.2f");
+				ImGui::Text("Ambient");
+				ImGui::ColorEdit3("##SunAmbient", &sun->GetAmbient()[0]);
+				ImGui::Text("Diffuse");
+				ImGui::ColorEdit3("##SunDiffuse", &sun->GetDiffuse()[0]);
+				ImGui::Text("Specular");
+				ImGui::DragFloat3("##SunSpecular", &sun->GetSpecular()[0], 0.01f, 0.0f, 1.0f, "%.2f");
+				ImGui::SeparatorText("Point Lights");
+				if (ImGui::BeginCombo("##PointLightList", lights.size() > 0 ? ("Light " + std::to_string(selectedLight + 1)).c_str() : ""))
 				{
-					if( ImGui::Selectable(( "Light " + std::to_string(i + 1) ).c_str(), selectedLight == i) )
+					for (int i = 0; i < lights.size(); i++)
 					{
-						selectedLight = i;
+						if (ImGui::Selectable(("Light " + std::to_string(i + 1)).c_str(), selectedLight == i))
+						{
+							selectedLight = i;
+						}
 					}
-				}
-				ImGui::EndCombo();
+					ImGui::EndCombo();
 
-				if(lights.size() > 0 )
+				}
+
+				if (lights.size() > 0)
 				{
 					ImGui::Text("Position");
-					ImGui::DragFloat3("##PointLightDirection", &lights[selectedLight]->GetPosition()[0], 0.01f, -1.0f, 1.0f, "%.2f");
+					ImGui::DragFloat3("##PointLightDirection", &lights[selectedLight]->GetPosition()[0], 0.01f, 0.0f, 0.0f, "%.2f");
 					ImGui::Text("Ambient");
 					ImGui::ColorEdit3("##PointLightAmbient", &lights[selectedLight]->GetAmbient()[0]);
 					ImGui::Text("Diffuse");
 					ImGui::ColorEdit3("##PointLightDiffuse", &lights[selectedLight]->GetDiffuse()[0]);
 					ImGui::Text("Specular");
 					ImGui::DragFloat3("##PointLightSpecular", &lights[selectedLight]->GetSpecular()[0], 0.01f, 0.0f, 1.0f, "%.2f");
+					ImGui::Text("Linear");
+					ImGui::InputFloat("##PointLightLinear", &lights[selectedLight]->GetLinear(), 0.001f, 0.01f, "%.4f");
+					ImGui::Text("Quadratic");
+					ImGui::InputFloat("##PointLightQuadratic", &lights[selectedLight]->GetQuadratic(), 0.001f, 0.01f, "%.6f");
 				}
+				ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.5f);
+				ImGui::Spacing();
+			}
+			if (ImGui::CollapsingHeader("Skybox"))
+			{
+
 			}
 
 			ImGui::EndTabItem();

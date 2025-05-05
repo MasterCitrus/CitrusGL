@@ -31,8 +31,8 @@ public:
 	float& GetQuadratic() { return quadratic; }
 
 private:
-	float linear;
-	float quadratic;
+	float linear = 0.09f;
+	float quadratic = 0.032f;
 };
 
 class SpotLight : public Light
