@@ -159,6 +159,7 @@
     <ClCompile Include="..\Dep\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\Dep\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\Dep\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\Dep\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="Animator.cpp" />
     <ClCompile Include="Application.cpp" />

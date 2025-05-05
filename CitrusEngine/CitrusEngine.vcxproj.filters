@@ -108,6 +108,9 @@
     <ClCompile Include="Framebuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Dep\imgui\misc\cpp\imgui_stdlib.cpp">
+      <Filter>Source Files\ThirdParty\ImGui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">

@@ -30,6 +30,7 @@ public:
 	void SetVec( const std::string& name, const glm::vec3& value, bool isColour );
 	void SetVec( const std::string& name, const glm::vec4& value, bool isColour );
 
+	MaterialProperty& GetProperty(const std::string& name);
 	std::map<std::string, MaterialProperty>& GetMaterialProperties() { return materialProperties; }
 
 	void Apply();

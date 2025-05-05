@@ -1,7 +1,12 @@
 #include "ModelViewer.h"
+#include "Animation.h"
+#include "Animator.h"
+#include "Input.h"
 #include "Key.h"
+#include "Light.h"
 
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include <imgui_internal.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
@@ -10,9 +15,18 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glad/glad.h>
 
+static int InputTextResizeCallback(ImGuiInputTextCallbackData* data)
+{
+	if( data->EventFlag == ImGuiInputTextFlags_CallbackResize )
+	{
+		std::string str = (const char*)data->UserData;
+	}
+	return 0;
+}
+
 ModelViewer::ModelViewer()
 {
-
+	sun = new DirectionLight({ 0.0f, -0.5f, -1.0f }, { 0.05f, 0.05f, 0.05f }, { 0.4f, 0.4f, 0.4f }, { 0.5f, 0.05f, 0.5f });
 }
 
 ModelViewer::~ModelViewer()
@@ -24,13 +38,20 @@ bool ModelViewer::Initialise()
 {
 	camera = new Camera(45.0f, (float)GetWindow().GetWidth() / (float)GetWindow().GetHeight(), 0.1f, 1000.0f);
 	camera->SetWindow(&GetWindow());
-	shader = assetManager.CreateShader("Temp", "Assets/Shaders/blinnphong.vs");
-	if (!shader.Link())
+	staticMeshShader = assetManager.CreateShader("Temp", "Assets/Shaders/blinnphong.vs");
+	skinnedMeshShader = assetManager.CreateShader("Skinned", "Assets/Shaders/skinnedblinnphong.vs");
+	if (!staticMeshShader.Link())
 	{
-		std::cout << "Shader link error: " << shader.GetLastError() << '\n';
+		std::cout << "Shader link error: " << staticMeshShader.GetLastError() << '\n';
 		return false;
 	}
-	testModel = new Model("Assets/Models/soulspear.obj", shader);
+	if( !skinnedMeshShader.Link() )
+	{
+		std::cout << "Shader link error: " << skinnedMeshShader.GetLastError() << '\n';
+		return false;
+	}
+
+	testModel = new Model("Assets/Models/person.gltf", skinnedMeshShader);
 
 	framebuffer = new Framebuffer(GetWindow().GetWidth(), GetWindow().GetHeight());
 
@@ -48,6 +69,15 @@ void ModelViewer::Shutdown()
 void ModelViewer::Update( float delta )
 {
 	camera->Update(delta);
+	testModel->Update(delta);
+
+	if( Input::IsKeyPressed(Key::LEFT_CONTROL || Key::RIGHT_CONTROL, &GetWindow()) )
+	{
+		if( Input::IsKeyPressed(Key::O, &GetWindow()) )
+		{
+			std::cout << "Open file\n";
+		}
+	}
 }
 
 void ModelViewer::Draw()
@@ -60,23 +90,35 @@ void ModelViewer::Draw()
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	shader.Bind();
+	staticMeshShader.Bind();
 
-	glm::vec3 lightPos = { 0.0f, 0.0f, 3.0f };
-	glm::vec3 viewPos = { 0.0f, 0.0f, 3.0f };
-	glm::vec3 lightColour = { 1.0f, 1.0f, 1.0f };
+	staticMeshShader.SetVec("dirLight.direction", sun->GetPosition());
+	staticMeshShader.SetVec("dirLight.ambient", sun->GetAmbient());
+	staticMeshShader.SetVec("dirLight.diffuse", sun->GetDiffuse());
+	staticMeshShader.SetVec("dirLight.specular", sun->GetSpecular());
+	staticMeshShader.SetVec("viewPos", camera->GetPosition());
+	
 
-	shader.SetVec("lightPos", lightPos);
-	shader.SetVec("viewPos", viewPos);
-	shader.SetVec("lightColour", lightColour);
-
-	shader.SetMat("projection", camera->GetProjectionMatrix());
-	shader.SetMat("view", camera->GetViewMatrix());
+	staticMeshShader.SetMat("projection", camera->GetProjectionMatrix());
+	staticMeshShader.SetMat("view", camera->GetViewMatrix());
 
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
 	model = glm::scale(model, glm::vec3(1.0f));
-	shader.SetMat("model", model);
+	staticMeshShader.SetMat("model", model);
+
+	skinnedMeshShader.Bind();
+
+	skinnedMeshShader.SetVec("dirLight.direction", sun->GetPosition());
+	skinnedMeshShader.SetVec("dirLight.ambient", sun->GetAmbient());
+	skinnedMeshShader.SetVec("dirLight.diffuse", sun->GetDiffuse());
+	skinnedMeshShader.SetVec("dirLight.specular", sun->GetSpecular());
+	skinnedMeshShader.SetVec("viewPos", camera->GetPosition());
+
+	skinnedMeshShader.SetMat("projection", camera->GetProjectionMatrix());
+	skinnedMeshShader.SetMat("view", camera->GetViewMatrix());
+
+	skinnedMeshShader.SetMat("model", model);
 
 	testModel->Draw();
 
@@ -114,9 +156,17 @@ void ModelViewer::ImGuiDraw()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("Open", "Ctrl + O"))
+			if (ImGui::BeginMenu("Open"))
 			{
+				if( ImGui::MenuItem("Load Model") )
+				{
 
+				}
+				if( ImGui::MenuItem("Load Skinned Model") )
+				{
+
+				}
+				ImGui::EndMenu();
 			}
 			if (ImGui::MenuItem("Exit", "Alt + F4"))
 			{
@@ -177,7 +227,7 @@ void ModelViewer::ImGuiDraw()
 				{
 					for (auto it = testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().begin(); it != testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().end(); it++)
 					{
-						if (ImGui::Selectable(it->first.c_str(), selectedProp->first == it->first))
+						if (ImGui::Selectable(it->first.c_str(), it->first == selectedProp->first))
 						{
 							selectedProp = it;
 							prop = it->second;
@@ -216,7 +266,7 @@ void ModelViewer::ImGuiDraw()
 					else
 					{
 						ImGui::Text(prop.name.c_str());
-						ImGui::InputFloat3("##Vec3", &std::get<glm::vec4>(prop.value)[0]);
+						ImGui::InputFloat3("##Vec3", &std::get<glm::vec3>(prop.value)[0]);
 					}
 				}
 				else if (std::holds_alternative<glm::vec4>(prop.value))
@@ -229,7 +279,7 @@ void ModelViewer::ImGuiDraw()
 					else
 					{
 						ImGui::Text(prop.name.c_str());
-						ImGui::InputFloat4("##Vec4", &std::get<glm::vec3>(prop.value)[0]);
+						ImGui::InputFloat4("##Vec4", &std::get<glm::vec4>(prop.value)[0]);
 					}
 				}
 				else if (std::holds_alternative<Texture*>(prop.value))
@@ -240,12 +290,71 @@ void ModelViewer::ImGuiDraw()
 			}
 			if (ImGui::CollapsingHeader("Animations"))
 			{
-
+				ImGui::Text("Animations");
+				if( ImGui::BeginCombo("##AnimationList", testModel->GetAnimator()->GetCurrentAnimation()->GetName().c_str()) )
+				{
+					for( int i = 0; i < testModel->GetAnimations().size(); i++ )
+					{
+						auto anim = testModel->GetAnimations()[i];
+						if( ImGui::Selectable(anim->GetName().c_str(), selectedAnimation == i) )
+						{
+							selectedAnimation = i;
+							testModel->GetAnimator()->PlayAnimation(anim);
+						}
+					}
+					ImGui::EndCombo();
+				}
+				if( ImGui::Button("Play Animation") )
+				{
+					testModel->GetAnimator()->GetIsPlaying() = true;
+				}
+				ImGui::SameLine();
+				if( ImGui::Button("Pause Animation") )
+				{
+					testModel->GetAnimator()->GetIsPlaying() = false;
+				}
+				ImGui::SeparatorText("Animation Properties");
+				ImGui::Text("Animation Name");
+				ImGui::InputText("##AnimationName", &testModel->GetAnimator()->GetCurrentAnimation()->GetName(), 0, InputTextResizeCallback);
 			}
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem("Scene Settings"))
 		{
+			ImGui::SeparatorText("Sun Light");
+			ImGui::Text("Direction");
+			ImGui::DragFloat3("##SunDirection", &sun->GetPosition()[0], 0.01f, -1.0f, 1.0f, "%.2f");
+			ImGui::Text("Ambient");
+			ImGui::ColorEdit3("##SunAmbient", &sun->GetAmbient()[0]);
+			ImGui::Text("Diffuse");
+			ImGui::ColorEdit3("##SunDiffuse", &sun->GetDiffuse()[0]);
+			ImGui::Text("Specular");
+			ImGui::DragFloat3("##SunSpecular", &sun->GetSpecular()[0], 0.01f, 0.0f, 1.0f, "%.2f");
+			ImGui::SeparatorText("Point Lights");
+			if( ImGui::BeginCombo("##PointLightList", lights.size() > 0 ? ("Light " + std::to_string(selectedLight + 1 )).c_str() : "") )
+			{
+				for( int i = 0; i < lights.size(); i++ )
+				{
+					if( ImGui::Selectable(( "Light " + std::to_string(i + 1) ).c_str(), selectedLight == i) )
+					{
+						selectedLight = i;
+					}
+				}
+				ImGui::EndCombo();
+
+				if(lights.size() > 0 )
+				{
+					ImGui::Text("Position");
+					ImGui::DragFloat3("##PointLightDirection", &lights[selectedLight]->GetPosition()[0], 0.01f, -1.0f, 1.0f, "%.2f");
+					ImGui::Text("Ambient");
+					ImGui::ColorEdit3("##PointLightAmbient", &lights[selectedLight]->GetAmbient()[0]);
+					ImGui::Text("Diffuse");
+					ImGui::ColorEdit3("##PointLightDiffuse", &lights[selectedLight]->GetDiffuse()[0]);
+					ImGui::Text("Specular");
+					ImGui::DragFloat3("##PointLightSpecular", &lights[selectedLight]->GetSpecular()[0], 0.01f, 0.0f, 1.0f, "%.2f");
+				}
+			}
+
 			ImGui::EndTabItem();
 		}
 		ImGui::EndTabBar();

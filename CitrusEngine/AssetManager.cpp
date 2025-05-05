@@ -22,10 +22,12 @@ Shader& AssetManager::CreateShader(const std::string& name, const std::string& p
     directory = path.substr(0, begin);
 
     Shader shader;
-    std::string filename;
     for (const auto& file : std::filesystem::directory_iterator(directory))
     {
         std::string temp = file.path().string();
+        begin = temp.find_last_of("/\\");
+        end = temp.find_last_of('.');
+        std::string filename = temp.substr(begin + 1, end - 1 - begin);
         std::string extension = temp.substr(end);
         filename = temp.substr(begin + 1, end - 1 - begin);
         if (filename == shaderName)

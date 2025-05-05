@@ -73,6 +73,14 @@ void Material::SetVec( const std::string& name, const glm::vec4& value, bool isC
 	materialProperties[name] = prop;
 }
 
+MaterialProperty& Material::GetProperty(const std::string& name)
+{
+	if( materialProperties.find(name) != materialProperties.end() )
+	{
+		return materialProperties[name];
+	}
+}
+
 void Material::Apply()
 {
 	shader.Bind();

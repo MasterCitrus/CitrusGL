@@ -1,11 +1,19 @@
 #include "Model.h"
+#include "Animation.h"
+#include "Animator.h"
 #include "Shader.h"
 #include "Texture.h"
 #include "Utils.h"
 
 Model::Model( const std::string& path, Shader& shader )
+	: shader(shader)
 {
 	LoadModel( path, shader );
+
+	if( animations.size() > 0 )
+	{
+		animator = new Animator(*animations.begin());
+	}
 }
 
 Model::~Model()
@@ -13,11 +21,28 @@ Model::~Model()
 
 }
 
+void Model::Update(float delta)
+{
+	if( animator )
+	{
+		animator->UpdateAnimation(delta);
+	}
+}
+
 void Model::Draw()
 {
 	for (auto& mesh : meshes)
 	{
 		mesh.Draw();
+	}
+
+	if( animations.size() > 0 )
+	{
+		auto transforms = animator->GetFinalBoneMatrices();
+		for( int i = 0; i < transforms.size(); ++i )
+		{
+			shader.SetMat(( "finalBoneMatrices[" + std::to_string(i) + "]" ).c_str(), transforms[i]);
+		}
 	}
 }
 
@@ -36,6 +61,22 @@ void Model::LoadModel( const std::string& path, Shader& shader )
 	this->path = path.substr( 0, path.find_last_of( "/\\" ) );
 
 	ProcessNode( scene->mRootNode, scene, shader );
+
+	if( scene->HasAnimations() )
+	{
+		LoadAnimations(scene);
+	}
+}
+
+void Model::LoadAnimations(const aiScene* scene)
+{
+	aiNode* root = scene->mRootNode;
+
+	for( unsigned int i = 0; i < scene->mNumAnimations; i++ )
+	{
+		auto anim = scene->mAnimations[i];
+		animations.push_back(ProcessAnimation(anim, root));
+	}
 }
 
 void Model::ProcessNode( aiNode* node, const aiScene* scene, Shader& shader )
@@ -69,7 +110,7 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
 		if (mesh->mTextureCoords[0])
 		{
 			vertex.texCoord = GetGLMVec( mesh->mTextureCoords[0][i] );
-			vertex.texCoord.y = 1.0 - vertex.texCoord.y;
+			vertex.texCoord.y = 1.0f - vertex.texCoord.y;
 		}
 		else
 		{
@@ -112,17 +153,41 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
 
 		material->SetVec("material.ambient", GetGLMVec(ambient), true);
 		material->SetVec("material.diffuse", GetGLMVec(diffuse), true);
-		material->SetVec("material.specular", GetGLMVec(specular));
+		material->SetVec("material.specular", GetGLMVec(specular), false);
 		material->SetFloat("material.shininess", shininess);
 
 		//Textures
 		std::vector<Texture*> diffuseMaps = LoadMaterialTextures(mat, aiTextureType_DIFFUSE);
+		if( diffuseMaps.empty() )
+		{
+			unsigned char pixels[] = {255, 255, 255, 255};
+			unsigned int width = 1;
+			unsigned int height = 1;
+			Texture* tex = new Texture(width, height, TextureType::DIFFUSE, TextureFormat::RGBA, pixels);
+			diffuseMaps.push_back(tex);
+		}
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
 		std::vector<Texture*> specularMaps = LoadMaterialTextures(mat, aiTextureType_SPECULAR);
+		if( specularMaps.empty() )
+		{
+			unsigned char pixels[] = { 0, 0, 0, 0 };
+			unsigned int width = 1;
+			unsigned int height = 1;
+			Texture* tex = new Texture(width, height, TextureType::SPECULAR, TextureFormat::RGB, pixels);
+			specularMaps.push_back(tex);
+		}
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
 		std::vector<Texture*> normalMaps = LoadMaterialTextures(mat, aiTextureType_HEIGHT);
+		if( normalMaps.empty() )
+		{
+			unsigned char pixels[] = { 128, 128, 255 };
+			unsigned int width = 1;
+			unsigned int height = 1;
+			Texture* tex = new Texture(width, height, TextureType::NORMAL, TextureFormat::RGBA, pixels);
+			normalMaps.push_back(tex);
+		}
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 
 		for (auto texture : textures)
@@ -146,6 +211,11 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
 	ExtractBoneWeightForVertices( vertices, mesh, scene );
 
 	return Mesh( mesh->mName.C_Str(), vertices, indices, material );
+}
+
+Animation* Model::ProcessAnimation(aiAnimation* animation, aiNode* node)
+{
+	return new Animation(node, animation, this);
 }
 
 void Model::SetVertexBoneDataToDefault( Vertex& vertex )

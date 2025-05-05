@@ -5,6 +5,9 @@
 #include "Camera.h"
 #include "Framebuffer.h"
 
+class DirectionLight;
+class PointLight;
+
 struct MaterialProperty;
 
 class ModelViewer : public Application
@@ -26,9 +29,12 @@ protected:
 	bool OnMouseButtonPressed( MouseButtonPressedEvent& e ) override;
 
 private:
+	std::vector<PointLight*> lights;
+	DirectionLight* sun;
 	AssetManager assetManager;
 	Model* testModel;
-	Shader shader;
+	Shader staticMeshShader;
+	Shader skinnedMeshShader;
 	Framebuffer* framebuffer;
 	Camera* camera;
 	bool viewportFocused;
@@ -37,5 +43,7 @@ private:
 	//ImGui Variables
 	int selectedMesh = 0;
 	int selectedMatProp = 0;
+	int selectedAnimation = 0;
+	int selectedLight = 0;
 };
 

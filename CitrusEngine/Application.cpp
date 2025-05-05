@@ -47,8 +47,9 @@ void Application::Run(const std::string& title, unsigned int width, unsigned int
 		{
 			currTime = std::chrono::high_resolution_clock::now();
 			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(currTime - prevTime);
+			prevTime = currTime;
 
-			deltaTime = duration.count();
+			deltaTime = duration.count() / 1000.0f;
 
 			if (glfwGetWindowAttrib( window, GLFW_ICONIFIED ) != 0) continue;
 

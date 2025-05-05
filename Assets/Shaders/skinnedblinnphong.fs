@@ -1,6 +1,6 @@
 #version 460 core
 
-in vec3 FragPos;
+in vec4 FragPos;
 in vec3 FragNormal;
 in vec2 FragTexCoord;
 in vec3 FragTangent;
@@ -78,7 +78,7 @@ void main()
     vec3 texNormal = texture(material.normalTex, FragTexCoord).rgb;
 
     norm = TBN * (texNormal * 2 - 1);
-
+	
 	vec3 viewDir = normalize(viewPos - FragPos.xyz);
 
 	vec3 result = CalDirLight(dirLight, norm, viewDir);
@@ -88,7 +88,8 @@ void main()
 		result += CalcPointLight(pointLights[i], norm, FragPos.xyz, viewDir);
 	}
 	
-	result += CalcSpotLight(spotLight, norm, FragPos, viewDir);
+	result += CalcSpotLight(spotLight, norm, FragPos.xyz, viewDir);
+
     FragColour = vec4(result, 1.0);
 }
 
