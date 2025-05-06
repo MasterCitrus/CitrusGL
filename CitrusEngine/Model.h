@@ -24,24 +24,24 @@ struct aiScene;
 class Model
 {
 public:
-	Model( const std::string& path, Shader& shader );
+	Model( const std::string& path, Shader* shader );
 	~Model();
 
 	void Update(float delta);
 	void Draw();
 
-	std::vector<Mesh>& GetMeshes() { return meshes; }
+	std::vector<Mesh*>& GetMeshes() { return meshes; }
 	std::vector<Animation*>& GetAnimations() { return animations; }
 	std::map<std::string, BoneInfo>& GetBoneInfoMap() { return boneInfoMap; }
 	int& GetBoneCount() { return boneCount; }
 	Animator* GetAnimator() const { return animator; }
 
 private:
-	void LoadModel( const std::string& path, Shader& shader );
+	void LoadModel( const std::string& path, Shader* shader );
 	void LoadAnimations(const aiScene* scene);
 
-	void ProcessNode(aiNode* node, const aiScene* scene, Shader& shader);
-	Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene, Shader& shader);
+	void ProcessNode(aiNode* node, const aiScene* scene, Shader* shader);
+	Mesh* ProcessMesh(aiMesh* mesh, const aiScene* scene, Shader* shader);
 	Animation* ProcessAnimation(aiAnimation* animation, aiNode* node);
 
 	void SetVertexBoneDataToDefault( Vertex& vertex );
@@ -51,13 +51,13 @@ private:
 	std::vector<Texture*> LoadMaterialTextures(aiMaterial* mat, aiTextureType type);
 
 private:
-	std::vector<Mesh> meshes;
+	std::vector<Mesh*> meshes;
 	std::vector<Texture*> loadedTextures;
 	std::vector<Animation*> animations;
 	std::map<std::string, BoneInfo> boneInfoMap;
 	std::string path;
 	int boneCount = 0;
 	Animator* animator;
-	Shader& shader;
+	Shader* shader;
 };
 

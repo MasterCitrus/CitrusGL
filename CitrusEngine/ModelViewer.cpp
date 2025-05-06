@@ -1,9 +1,12 @@
 #include "ModelViewer.h"
 #include "Animation.h"
 #include "Animator.h"
+#include "Cubemap.h"
 #include "Input.h"
 #include "Key.h"
 #include "Light.h"
+#include "Material.h"
+#include "Skybox.h"
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -14,6 +17,9 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glad/glad.h>
+#include <nfd.hpp>
+
+#include <filesystem>
 
 static int InputTextResizeCallback(ImGuiInputTextCallbackData* data)
 {
@@ -26,7 +32,7 @@ static int InputTextResizeCallback(ImGuiInputTextCallbackData* data)
 
 ModelViewer::ModelViewer()
 {
-	sun = new DirectionLight({ 0.0f, -0.5f, -1.0f }, { 0.05f, 0.05f, 0.05f }, { 0.4f, 0.4f, 0.4f }, { 0.5f, 0.05f, 0.5f });
+	sun = new DirectionLight({ 0.0f, -0.5f, -1.0f }, { 0.05f, 0.05f, 0.05f }, { 0.0f, 0.0f, 0.0f }, { 0.5f, 0.5f, 0.5f });
 }
 
 ModelViewer::~ModelViewer()
@@ -38,48 +44,66 @@ bool ModelViewer::Initialise()
 {
 	camera = new Camera(45.0f, (float)GetWindow().GetWidth() / (float)GetWindow().GetHeight(), 0.1f, 1000.0f);
 	camera->SetWindow(&GetWindow());
-	staticMeshShader = assetManager.CreateShader("Temp", "Assets/Shaders/blinnphong.vs");
-	skinnedMeshShader = assetManager.CreateShader("Skinned", "Assets/Shaders/skinnedblinnphong.vs");
-	if (!staticMeshShader.Link())
+	blinnPhong = assetManager.CreateShader("Blinn-Phong", "Assets/Shaders/blinnphong.vs");
+	skyboxShader = &assetManager.CreateShader("Skybox", "Assets/Shaders/skybox.vs");
+	if (!blinnPhong.Link())
 	{
-		std::cout << "Shader link error: " << staticMeshShader.GetLastError() << '\n';
-		return false;
-	}
-	if( !skinnedMeshShader.Link() )
-	{
-		std::cout << "Shader link error: " << skinnedMeshShader.GetLastError() << '\n';
+		std::cout << "Shader link error: " << blinnPhong.GetLastError() << '\n';
 		return false;
 	}
 
-	testModel = new Model("Assets/Models/soulspear.obj", staticMeshShader);
+	if( !skyboxShader->Link() )
+	{
+		std::cout << "Shader link error: " << skyboxShader->GetLastError() << '\n';
+		return false;
+	}
+
+	skyboxes = CreateSkyboxes();
+
+	testModel = new Model("Assets/Models/person.gltf", &blinnPhong);
 
 	framebuffer = new Framebuffer(GetWindow().GetWidth(), GetWindow().GetHeight());
 
-	prop = &testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().begin()->second;
+	prop = &testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().begin()->second;
 
-	PointLight* l1 = new PointLight({ -1.0, 2.0f, 1.0f }, { 0.05f, 0.05f, 0.05f }, { 1.0f, 0.0f, 0.0f }, { 0.5f, 0.5f, 0.5f });
+	PointLight* l1 = new PointLight({ -1.5, 2.0f, 0.0f }, { 0.05f, 0.05f, 0.05f }, { 1.0f, 0.0f, 0.0f }, { 0.5f, 0.5f, 0.5f });
 	PointLight* l2 = new PointLight({ 0.0, 2.0f, 1.0f }, { 0.05f, 0.05f, 0.05f }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.5f, 0.5f });
-	PointLight* l3 = new PointLight({ 1.0, 2.0f, 1.0f }, { 0.05f, 0.05f, 0.05f }, { 0.0f, 0.0f, 1.0f }, { 0.5f, 0.5f, 0.5f });
+	PointLight* l3 = new PointLight({ 1.5, 2.0f, 0.0f }, { 0.05f, 0.05f, 0.05f }, { 0.0f, 0.0f, 1.0f }, { 0.5f, 0.5f, 0.5f });
 
 	lights.push_back(l1);
 	lights.push_back(l2);
 	lights.push_back(l3);
 
-	materials = CreateMaterials();
-
-	glEnable(GL_DEPTH_TEST);
+	materials = CreateMaterialsFromMaterial(testModel->GetMeshes()[selectedMesh]->GetMaterial());
+	for( int i = 0; i < testModel->GetMeshes().size(); i++ )
+	{
+		materials[( "Mesh" + std::to_string(i + 1) )] = testModel->GetMeshes()[i]->GetMaterial();
+	}
+	selectedMaterial = materials.find( "Mesh" + std::to_string(selectedMesh + 1) );
+	selectedProp = testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().begin();
 
 	return true;
 }
 
 void ModelViewer::Shutdown()
 {
-	delete camera;
-	delete testModel;
+	for( auto& skybox : skyboxes ) delete skybox;
+	skyboxes.clear();
 
 	for (auto& light : lights) delete light;
+	lights.clear();
 
-	for (auto& mat : materials) delete mat;
+	for (auto& mat : materials) delete mat.second;
+	materials.clear();
+
+	std::cout << "Deleting camera\n";
+	delete camera;
+	std::cout << "Deleting model\n";
+	delete testModel;
+	//std::cout << "Deleting skybox shader\n";
+	//delete skyboxShader;
+	delete sun;
+	delete framebuffer;
 }
 
 void ModelViewer::Update( float delta )
@@ -98,64 +122,54 @@ void ModelViewer::Update( float delta )
 
 void ModelViewer::Draw()
 {
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	framebuffer->Bind();
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+
+	glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	staticMeshShader.Bind();
+	blinnPhong.Bind();
 
-	staticMeshShader.SetVec("dirLight.direction", sun->GetPosition());
-	staticMeshShader.SetVec("dirLight.ambient", sun->GetAmbient());
-	staticMeshShader.SetVec("dirLight.diffuse", sun->GetDiffuse());
-	staticMeshShader.SetVec("dirLight.specular", sun->GetSpecular());
-	staticMeshShader.SetVec("viewPos", camera->GetPosition());
+	blinnPhong.SetVec("dirLight.direction", sun->GetPosition());
+	blinnPhong.SetVec("dirLight.ambient", sun->GetAmbient());
+	blinnPhong.SetVec("dirLight.diffuse", sun->GetDiffuse());
+	blinnPhong.SetVec("dirLight.specular", sun->GetSpecular());
+	blinnPhong.SetVec("viewPos", camera->GetPosition());
 
 	for (int i = 0; i < lights.size(); i++)
 	{
-		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].position"), lights[i]->GetPosition());
-		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].ambient"), lights[i]->GetAmbient());
-		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].diffuse"), lights[i]->GetDiffuse());
-		staticMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].specular"), lights[i]->GetSpecular());
-		staticMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].linear"), lights[i]->GetLinear());
-		staticMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].quadratic"), lights[i]->GetQuadratic());
+		blinnPhong.SetVec(("pointLights[" + std::to_string(i) + "].position"), lights[i]->GetPosition());
+		blinnPhong.SetVec(("pointLights[" + std::to_string(i) + "].ambient"), lights[i]->GetAmbient());
+		blinnPhong.SetVec(("pointLights[" + std::to_string(i) + "].diffuse"), lights[i]->GetDiffuse());
+		blinnPhong.SetVec(("pointLights[" + std::to_string(i) + "].specular"), lights[i]->GetSpecular());
+		blinnPhong.SetFloat(("pointLights[" + std::to_string(i) + "].linear"), lights[i]->GetLinear());
+		blinnPhong.SetFloat(("pointLights[" + std::to_string(i) + "].quadratic"), lights[i]->GetQuadratic());
+		blinnPhong.SetFloat(( "pointLights[" + std::to_string(i) + "].intensity" ), lights[i]->GetIntensity());
 	}
 	
-	staticMeshShader.SetMat("projection", camera->GetProjectionMatrix());
-	staticMeshShader.SetMat("view", camera->GetViewMatrix());
+	blinnPhong.SetMat("projection", camera->GetProjectionMatrix());
+	blinnPhong.SetMat("view", camera->GetViewMatrix());
 
 	glm::mat4 model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
 	model = glm::scale(model, glm::vec3(1.0f));
-	staticMeshShader.SetMat("model", model);
-
-	skinnedMeshShader.Bind();
-
-	skinnedMeshShader.SetVec("dirLight.direction", sun->GetPosition());
-	skinnedMeshShader.SetVec("dirLight.ambient", sun->GetAmbient());
-	skinnedMeshShader.SetVec("dirLight.diffuse", sun->GetDiffuse());
-	skinnedMeshShader.SetVec("dirLight.specular", sun->GetSpecular());
-	skinnedMeshShader.SetVec("viewPos", camera->GetPosition());
-
-	for (int i = 0; i < lights.size(); i++)
+	blinnPhong.SetMat("model", model);
+	if( testModel->GetBoneCount() > 0 )
 	{
-		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].position"), lights[i]->GetPosition());
-		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].ambient"), lights[i]->GetAmbient());
-		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].diffuse"), lights[i]->GetDiffuse());
-		skinnedMeshShader.SetVec(("pointLights[" + std::to_string(i) + "].specular"), lights[i]->GetSpecular());
-		skinnedMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].linear"), lights[i]->GetLinear());
-		skinnedMeshShader.SetFloat(("pointLights[" + std::to_string(i) + "].quadratic"), lights[i]->GetQuadratic());
+		blinnPhong.SetBool("isSkinned", true);
+	}
+	else
+	{
+		blinnPhong.SetBool("isSkinned", false);
 	}
 
-	skinnedMeshShader.SetMat("projection", camera->GetProjectionMatrix());
-	skinnedMeshShader.SetMat("view", camera->GetViewMatrix());
-
-	skinnedMeshShader.SetMat("model", model);
-
 	testModel->Draw();
+
+	skyboxes[selectedSkybox]->Draw();
 
 	framebuffer->Unbind();
 }
@@ -191,17 +205,49 @@ void ModelViewer::ImGuiDraw()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::BeginMenu("Open"))
+			if ( ImGui::MenuItem("Load Model") )
 			{
-				if( ImGui::MenuItem("Load Model") )
-				{
+				NFD::Guard guard;
+				NFD::UniquePath uPath;
 
-				}
-				if( ImGui::MenuItem("Load Skinned Model") )
-				{
+				nfdfilteritem_t filter[1] = {{"3D Models", "fbx,gltf,obj"}};
 
+				nfdresult_t result = NFD::OpenDialog(uPath, filter, 1);
+
+				std::string path;
+
+				if( result == NFD_OKAY )
+				{
+					path = uPath.get();
+					delete testModel;
+					testModel = nullptr;
+					testModel = new Model(path, &blinnPhong);
+
+					for( auto& mat : materials ) delete mat.second;
+					materials.clear();
+
+					for( int i = 0; i < testModel->GetMeshes().size(); i++ )
+					{
+						auto temp = CreateMaterialsFromMaterial(testModel->GetMeshes()[i]->GetMaterial());
+						materials.insert(temp.begin(), temp.end());
+					}
+					for( int i = 0; i < testModel->GetMeshes().size(); i++ )
+					{
+						materials[( "Mesh" + std::to_string(i + 1) )] = testModel->GetMeshes()[i]->GetMaterial();
+					}
+
+					int selectedMesh = 0;
+					int selectedMatProp = 0;
+					int selectedAnimation = 0;
+
+					selectedMaterial = materials.find("Mesh" + std::to_string(selectedMesh + 1));
+					selectedProp = testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().begin();
+					prop = &selectedProp->second;
 				}
-				ImGui::EndMenu();
+				else
+				{
+					std::cout << NFD::GetError() << '\n';
+				}
 			}
 			if (ImGui::MenuItem("Exit", "Alt + F4"))
 			{
@@ -248,37 +294,80 @@ void ModelViewer::ImGuiDraw()
 						selectedMesh = i;
 					}
 					ImGui::TableNextColumn();
-					ImGui::Text(testModel->GetMeshes()[i].GetName().c_str());
+					ImGui::Text(testModel->GetMeshes()[i]->GetName().c_str());
 				}
 				ImGui::EndTable();
 			}
 			ImGui::Spacing();
 			if (ImGui::CollapsingHeader("Materials"))
 			{
-				ImGui::Text("Properties List");
-				static auto selectedProp = testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().begin();
-				if (ImGui::BeginCombo("##MatProps", selectedProp->first.c_str()))
+				ImGui::Text("Materials List");
+				if( ImGui::BeginCombo("##MaterialsList", selectedMaterial->first.c_str()) )
 				{
-					for (auto it = testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().begin(); it != testModel->GetMeshes()[selectedMesh].GetMaterial()->GetMaterialProperties().end(); it++)
+					for( auto it = materials.begin(); it != materials.end(); it++ )
 					{
-						if (ImGui::Selectable(it->first.c_str(), it->first == selectedProp->first))
+						//ImGui::Image(,{32, 32});
+						if( ImGui::Selectable(it->first.c_str(), it->first == selectedMaterial->first) )
 						{
-							selectedProp = it;
-							prop = &it->second;
+							selectedMaterial = it;
+							testModel->GetMeshes()[selectedMesh]->SetMaterial(it->second);
+							selectedProp = it->second->GetMaterialProperties().begin();
+							prop = &selectedProp->second;
 						}
 					}
 					ImGui::EndCombo();
 				}
-				ImGui::SeparatorText("Material Properties");
+				ImGui::Text("Properties List");
+				if (ImGui::BeginCombo("##MatProps", selectedProp->first.c_str()))
+				{
+					for (auto it = testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().begin(); it != testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().end(); it++)
+					{
+						if (ImGui::Selectable(it->first.c_str(), it->first == selectedProp->first))
+						{
+							selectedProp = it;
+							prop = &selectedProp->second;
+						}
+					}
+					ImGui::EndCombo();
+				}
+				ImGui::SeparatorText("Material Property Settings");
 				if (std::holds_alternative<int>((*prop).value))
 				{
 					ImGui::Text((*prop).name.c_str());
-					ImGui::InputInt("##Int", &std::get<int>((*prop).value));
+					switch( prop->type )
+					{
+					case MaterialPropertyDisplayType::INPUT:
+						ImGui::InputInt("##Int", &std::get<int>(( *prop ).value));
+						break;
+					case MaterialPropertyDisplayType::DRAG:
+						ImGui::DragInt("##Int", &std::get<int>(( *prop ).value), 0.01f , std::get<int>(prop->minValue), std::get<int>(prop->maxValue));
+						break;
+					case MaterialPropertyDisplayType::SLIDER:
+						ImGui::SliderInt("##Int", &std::get<int>(( *prop ).value), std::get<int>(prop->minValue), std::get<int>(prop->maxValue));
+						break;
+					default:
+						ImGui::InputInt("##Int", &std::get<int>(( *prop ).value));
+						break;
+					}
 				}
 				else if (std::holds_alternative<float>((*prop).value))
 				{
 					ImGui::Text((*prop).name.c_str());
-					ImGui::InputFloat("##Float", &std::get<float>((*prop).value));
+					switch( prop->type )
+					{
+					case MaterialPropertyDisplayType::INPUT:
+						ImGui::InputFloat("##Float", &std::get<float>(( *prop ).value));
+						break;
+					case MaterialPropertyDisplayType::DRAG:
+						ImGui::DragFloat("##Float", &std::get<float>(( *prop ).value), 0.0f, std::get<float>(prop->minValue), std::get<float>(prop->maxValue));
+						break;
+					case MaterialPropertyDisplayType::SLIDER:
+						ImGui::SliderFloat("##Float", &std::get<float>(( *prop ).value), std::get<float>(prop->minValue), std::get<float>(prop->maxValue), "%.2f");
+						break;
+					default:
+						ImGui::InputFloat("##Int", &std::get<float>(( *prop ).value));
+						break;
+					}
 				}
 				else if (std::holds_alternative<bool>((*prop).value))
 				{
@@ -288,32 +377,71 @@ void ModelViewer::ImGuiDraw()
 				else if (std::holds_alternative<glm::vec2>((*prop).value))
 				{
 					ImGui::Text((*prop).name.c_str());
-					ImGui::InputFloat2("##Vec2", &std::get<glm::vec2>((*prop).value)[0]);
+					switch( prop->type )
+					{
+					case MaterialPropertyDisplayType::INPUT:
+						ImGui::InputFloat2("##Float", &std::get<glm::vec2>(( *prop ).value)[0]);
+						break;
+					case MaterialPropertyDisplayType::DRAG:
+						ImGui::DragFloat2("##Float", &std::get<glm::vec2>(( *prop ).value)[0], 0.0f, std::get<float>(prop->minValue), std::get<float>(prop->maxValue));
+						break;
+					case MaterialPropertyDisplayType::SLIDER:
+						ImGui::SliderFloat2("##Float", &std::get<glm::vec2>(( *prop ).value)[0], std::get<float>(prop->minValue), std::get<float>(prop->maxValue), "%.2f");
+						break;
+					default:
+						ImGui::InputFloat2("##Int", &std::get<glm::vec2>(( *prop ).value)[0]);
+						break;
+					}
 				}
 				else if (std::holds_alternative<glm::vec3>((*prop).value))
 				{
-					if ((*prop).isColour)
+					ImGui::Text((*prop).name.c_str());
+					switch( prop->type )
 					{
-						ImGui::Text((*prop).name.c_str());
-						ImGui::ColorEdit3("##Vec3", &std::get<glm::vec3>((*prop).value)[0]);
+					case MaterialPropertyDisplayType::INPUT:
+						ImGui::InputFloat3("##glm::vec3", &std::get<glm::vec3>(( *prop ).value)[0]);
+						break;
+					case MaterialPropertyDisplayType::DRAG:
+						ImGui::DragFloat3("##glm::vec3", &std::get<glm::vec3>(( *prop ).value)[0], 0.0f, std::get<float>(prop->minValue), std::get<float>(prop->maxValue));
+						break;
+					case MaterialPropertyDisplayType::SLIDER:
+						ImGui::SliderFloat3("##glm::vec3", &std::get<glm::vec3>(( *prop ).value)[0], std::get<float>(prop->minValue), std::get<float>(prop->maxValue), "%.2f");
+						break;
+					case MaterialPropertyDisplayType::COLOUREDIT:
+						ImGui::ColorEdit3("##glm::vec3", &std::get<glm::vec3>(( *prop ).value)[0]);
+						break;
+					case MaterialPropertyDisplayType::COLOURPICKER:
+						ImGui::ColorPicker3("##glm::vec3", &std::get<glm::vec3>(( *prop ).value)[0]);
+						break;
+					default:
+						ImGui::InputFloat3("##Int", &std::get<glm::vec3>(( *prop ).value)[0]);
+						break;
 					}
-					else
-					{
-						ImGui::Text((*prop).name.c_str());
-						ImGui::InputFloat3("##Vec3", &std::get<glm::vec3>((*prop).value)[0]);
-					}
+					
 				}
 				else if (std::holds_alternative<glm::vec4>((*prop).value))
 				{
-					if ((*prop).isColour)
+					ImGui::Text(( *prop ).name.c_str());
+					switch( prop->type )
 					{
-						ImGui::Text((*prop).name.c_str());
-						ImGui::ColorEdit4("##Vec4", &std::get<glm::vec4>((*prop).value)[0]);
-					}
-					else
-					{
-						ImGui::Text((*prop).name.c_str());
-						ImGui::InputFloat4("##Vec4", &std::get<glm::vec4>((*prop).value)[0]);
+					case MaterialPropertyDisplayType::INPUT:
+						ImGui::InputFloat4("##glm::vec4", &std::get<glm::vec4>(( *prop ).value)[0]);
+						break;
+					case MaterialPropertyDisplayType::DRAG:
+						ImGui::DragFloat4("##glm::vec4", &std::get<glm::vec4>(( *prop ).value)[0], 0.0f, std::get<float>(prop->minValue), std::get<float>(prop->maxValue));
+						break;
+					case MaterialPropertyDisplayType::SLIDER:
+						ImGui::SliderFloat4("##glm::vec4", &std::get<glm::vec4>(( *prop ).value)[0], std::get<float>(prop->minValue), std::get<float>(prop->maxValue), "%.2f");
+						break;
+					case MaterialPropertyDisplayType::COLOUREDIT:
+						ImGui::ColorEdit4("##glm::vec4", &std::get<glm::vec4>(( *prop ).value)[0]);
+						break;
+					case MaterialPropertyDisplayType::COLOURPICKER:
+						ImGui::ColorPicker4("##glm::vec4", &std::get<glm::vec4>(( *prop ).value)[0]);
+						break;
+					default:
+						ImGui::InputFloat4("##Int", &std::get<glm::vec4>(( *prop ).value)[0]);
+						break;
 					}
 				}
 				else if (std::holds_alternative<Texture*>((*prop).value))
@@ -327,7 +455,7 @@ void ModelViewer::ImGuiDraw()
 			if (ImGui::CollapsingHeader("Animations"))
 			{
 				ImGui::Text("Animations");
-				if( ImGui::BeginCombo("##AnimationList", testModel->GetAnimator()->GetCurrentAnimation()->GetName().c_str()) )
+				if( ImGui::BeginCombo("##AnimationList", testModel->GetAnimator() != nullptr ? testModel->GetAnimator()->GetCurrentAnimation()->GetName().c_str() : "") )
 				{
 					for( int i = 0; i < testModel->GetAnimations().size(); i++ )
 					{
@@ -340,19 +468,22 @@ void ModelViewer::ImGuiDraw()
 					}
 					ImGui::EndCombo();
 				}
-				if( ImGui::Button("Play Animation") )
+				if( testModel->GetAnimator() != nullptr )
 				{
-					testModel->GetAnimator()->GetIsPlaying() = true;
+					if( ImGui::Button("Play Animation") )
+					{
+						testModel->GetAnimator()->GetIsPlaying() = true;
+					}
+					ImGui::SameLine();
+					if( ImGui::Button("Pause Animation") )
+					{
+						testModel->GetAnimator()->GetIsPlaying() = false;
+					}
+					ImGui::SeparatorText("Animation Properties");
+					ImGui::Text("Animation Name");
+					ImGui::InputText("##AnimationName", &testModel->GetAnimator()->GetCurrentAnimation()->GetName(), 0, InputTextResizeCallback);
+					ImGui::Text("Duration: %.2f", testModel->GetAnimator()->GetCurrentAnimation()->GetDuration() / testModel->GetAnimator()->GetCurrentAnimation()->GetTicksPerSecond());
 				}
-				ImGui::SameLine();
-				if( ImGui::Button("Pause Animation") )
-				{
-					testModel->GetAnimator()->GetIsPlaying() = false;
-				}
-				ImGui::SeparatorText("Animation Properties");
-				ImGui::Text("Animation Name");
-				ImGui::InputText("##AnimationName", &testModel->GetAnimator()->GetCurrentAnimation()->GetName(), 0, InputTextResizeCallback);
-				ImGui::Text("Duration: %.2f", testModel->GetAnimator()->GetCurrentAnimation()->GetDuration() / testModel->GetAnimator()->GetCurrentAnimation()->GetTicksPerSecond());
 			}
 			ImGui::EndTabItem();
 		}
@@ -397,13 +528,26 @@ void ModelViewer::ImGuiDraw()
 					ImGui::InputFloat("##PointLightLinear", &lights[selectedLight]->GetLinear(), 0.001f, 0.01f, "%.4f");
 					ImGui::Text("Quadratic");
 					ImGui::InputFloat("##PointLightQuadratic", &lights[selectedLight]->GetQuadratic(), 0.001f, 0.01f, "%.6f");
+					ImGui::Text("Intensity");
+					ImGui::SliderFloat("##PointLightIntensity", &lights[selectedLight]->GetIntensity(), 0.001f, 100.0f, "%.6f");
 				}
 				ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.5f);
 				ImGui::Spacing();
 			}
 			if (ImGui::CollapsingHeader("Skybox"))
 			{
-
+				ImGui::Text("Skybox List");
+				if( ImGui::BeginCombo("##Skyboxes", skyboxes.size() > 0 ? skyboxes[selectedSkybox]->GetName().c_str() : "") )
+				{
+					for( int i = 0; i < skyboxes.size(); i++ )
+					{
+						if( ImGui::Selectable(skyboxes[i]->GetName().c_str(), selectedSkybox == i) )
+						{
+							selectedSkybox = i;
+						}
+					}
+					ImGui::EndCombo();
+				}
 			}
 
 			ImGui::EndTabItem();
@@ -440,66 +584,211 @@ bool ModelViewer::OnMouseButtonPressed( MouseButtonPressedEvent& e )
 	return false;
 }
 
-std::vector<Material*> ModelViewer::CreateMaterials() const
+std::map<std::string, Material*> ModelViewer::CreateMaterialsFromMaterial(Material* material) const
 {
-	std::vector<Material*> temp;
+	std::map<std::string, Material*> temp;
 
-	//Red
-	Material* redMat = new Material(skinnedMeshShader);
-	redMat->SetVec("material.ambient", {0.02f, 0.02f, 0.02f}, true);
-	redMat->SetVec("material.diffuse", {1.0f, 0.0f, 0.0f}, true);
-	redMat->SetVec("material.specular", {0.05f, 0.05f, 0.05f}, false);
-	redMat->SetFloat("material.shininess", 50);
-	temp.push_back(redMat);
-	//Green
-	Material* greenMat = new Material(skinnedMeshShader);
-	greenMat->SetVec("material.ambient", {0.02f, 0.02f, 0.02f}, true);
-	greenMat->SetVec("material.diffuse", {0.0f, 1.0f, 0.0f}, true);
-	greenMat->SetVec("material.specular", {0.05f, 0.05f, 0.05f}, false);
-	greenMat->SetFloat("material.shininess", 50);
-	temp.push_back(blueMat);
-	//Blue
-	Material* blueMat = new Material(skinnedMeshShader);
-	blueMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
-	blueMat->SetVec("material.diffuse", { 0.0f, 0.0f, 1.0f }, true);
-	blueMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
-	blueMat->SetFloat("material.shininess", 50);
-	temp.push_back(greenMat);
-	//Yellow
-	Material* yellowMat = new Material(skinnedMeshShader);
-	yellowMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
-	yellowMat->SetVec("material.diffuse", { 1.0f, 1.0f, 0.0f }, true);
-	yellowMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
-	yellowMat->SetFloat("material.shininess", 50);
-	temp.push_back(yellowMat);
-	//Pink
-	Material* pinkMat = new Material(skinnedMeshShader);
-	pinkMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
-	pinkMat->SetVec("material.diffuse", { 1.0f, 0.0f, 1.0f }, true);
-	pinkMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
-	pinkMat->SetFloat("material.shininess", 50);
-	temp.push_back(pinkMat);
-	//Cyan
-	Material* cyanMat = new Material(skinnedMeshShader);
-	cyanMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
-	cyanMat->SetVec("material.diffuse", { 0.0f, 1.0f, 1.0f }, true);
-	cyanMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
-	cyanMat->SetFloat("material.shininess", 50);
-	temp.push_back(cyanMat);
-	//White
-	Material* whiteMat = new Material(skinnedMeshShader);
-	whiteMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
-	whiteMat->SetVec("material.diffuse", { 1.0f, 1.0f, 1.0f }, true);
-	whiteMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
-	whiteMat->SetFloat("material.shininess", 50);
-	temp.push_back(whiteMat);
-	//Black
-	Material* blackMat = new Material(skinnedMeshShader);
-	blackMat->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, true);
-	blackMat->SetVec("material.diffuse", { 0.0f, 0.0f, 0.0f }, true);
-	blackMat->SetVec("material.specular", { 0.05f, 0.05f, 0.05f }, false);
-	blackMat->SetFloat("material.shininess", 50);
-	temp.push_back(blackMat);
+	//Crystals/Gems/Minerals
+	//Emerald
+	Material* emeraldCrystal = new Material(material);
+	emeraldCrystal->SetVec("material.ambient", { 0.0215f, 0.1745f, 0.0215f }, MaterialPropertyDisplayType::COLOUREDIT);
+	emeraldCrystal->SetVec("material.diffuse", { 0.07568f, 0.61424f, 0.07568f }, MaterialPropertyDisplayType::COLOUREDIT);
+	emeraldCrystal->SetVec("material.specular", { 0.633f, 0.727811f, 0.633f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	emeraldCrystal->SetFloat("material.shininess", 76.8f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Emerald"] = emeraldCrystal;
+	//Jade
+	Material* jadeCrystal = new Material(material);
+	jadeCrystal->SetVec("material.ambient", { 0.135f, 0.2225f, 0.1575f }, MaterialPropertyDisplayType::COLOUREDIT);
+	jadeCrystal->SetVec("material.diffuse", { 0.54f, 0.89f, 0.63f }, MaterialPropertyDisplayType::COLOUREDIT);
+	jadeCrystal->SetVec("material.specular", { 0.316228f, 0.316228f, 0.316228f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	jadeCrystal->SetFloat("material.shininess", 12.8f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Jade"] = jadeCrystal;
+	//Obisidian
+	Material* obisidianCrystal = new Material(material);
+	obisidianCrystal->SetVec("material.ambient", { 0.05375f, 0.05f, 0.06625f }, MaterialPropertyDisplayType::COLOUREDIT);
+	obisidianCrystal->SetVec("material.diffuse", { 0.18275f, 0.17f, 0.22525f }, MaterialPropertyDisplayType::COLOUREDIT);
+	obisidianCrystal->SetVec("material.specular", { 0.332741f, 0.328634f, 0.346435f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	obisidianCrystal->SetFloat("material.shininess", 38.4f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Obsidian"] = obisidianCrystal;
+	//Pearl
+	Material* pearlCrystal = new Material(material);
+	pearlCrystal->SetVec("material.ambient", { 0.25f, 0.20725f, 0.20725f }, MaterialPropertyDisplayType::COLOUREDIT);
+	pearlCrystal->SetVec("material.diffuse", { 1.0f, 0.829f, 0.829f }, MaterialPropertyDisplayType::COLOUREDIT);
+	pearlCrystal->SetVec("material.specular", { 0.296648f, 0.296648f, 0.296648f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	pearlCrystal->SetFloat("material.shininess", 11.264f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Pearl"] = pearlCrystal;
+	//Ruby
+	Material* rubyCrystal = new Material(material);
+	rubyCrystal->SetVec("material.ambient", { 0.1745f, 0.01175f, 0.01175f }, MaterialPropertyDisplayType::COLOUREDIT);
+	rubyCrystal->SetVec("material.diffuse", { 0.61424f, 0.04136f, 0.04136f }, MaterialPropertyDisplayType::COLOUREDIT);
+	rubyCrystal->SetVec("material.specular", { 0.727811f, 0.626959f, 0.626959f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	rubyCrystal->SetFloat("material.shininess", 76.8f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Ruby"] = rubyCrystal;
+	//Turquoise
+	Material* turquoiseCrystal = new Material(material);
+	turquoiseCrystal->SetVec("material.ambient", { 0.1f, 0.18725f, 0.1745f }, MaterialPropertyDisplayType::COLOUREDIT);
+	turquoiseCrystal->SetVec("material.diffuse", { 0.396f, 0.74151f, 0.69102f }, MaterialPropertyDisplayType::COLOUREDIT);
+	turquoiseCrystal->SetVec("material.specular", { 0.297254f, 0.30829f, 0.306678f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	turquoiseCrystal->SetFloat("material.shininess", 12.8f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Turquoise"] = turquoiseCrystal;
+
+	//Metals
+	//Brass
+	Material* brassMetal = new Material(material);
+	brassMetal->SetVec("material.ambient", { 0.329412f, 0.223529f, 0.027451f }, MaterialPropertyDisplayType::COLOUREDIT);
+	brassMetal->SetVec("material.diffuse", { 0.780392f, 0.568627f, 0.113725f }, MaterialPropertyDisplayType::COLOUREDIT);
+	brassMetal->SetVec("material.specular", { 0.992157f, 0.941176f, 0.807843f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	brassMetal->SetFloat("material.shininess",27.89743616f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Brass"] = brassMetal;
+	//Bronze
+	Material* bronzeMetal = new Material(material);
+	bronzeMetal->SetVec("material.ambient", { 0.2125f, 0.1275f, 0.054f }, MaterialPropertyDisplayType::COLOUREDIT);
+	bronzeMetal->SetVec("material.diffuse", { 0.714f, 0.4284f, 0.18144f }, MaterialPropertyDisplayType::COLOUREDIT);
+	bronzeMetal->SetVec("material.specular", { 0.393548f, 0.271906f, 0.166721f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	bronzeMetal->SetFloat("material.shininess", 25.6f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Bronze"] = bronzeMetal;
+	//Chrome
+	Material* chromeMetal = new Material(material);
+	chromeMetal->SetVec("material.ambient", { 0.25f, 0.25f, 0.25f }, MaterialPropertyDisplayType::COLOUREDIT);
+	chromeMetal->SetVec("material.diffuse", { 0.4f, 0.4f, 0.4f }, MaterialPropertyDisplayType::COLOUREDIT);
+	chromeMetal->SetVec("material.specular", { 0.774597f, 0.774597f, 0.774597f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	chromeMetal->SetFloat("material.shininess", 76.8f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Chrome"] = chromeMetal;
+	//Copper
+	Material* copperMetal = new Material(material);
+	copperMetal->SetVec("material.ambient", { 0.19125f, 0.0735f, 0.0225f }, MaterialPropertyDisplayType::COLOUREDIT);
+	copperMetal->SetVec("material.diffuse", { 0.7038f, 0.27048f, 0.0828f }, MaterialPropertyDisplayType::COLOUREDIT);
+	copperMetal->SetVec("material.specular", { 0.256777f, 0.137622f, 0.086014f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	copperMetal->SetFloat("material.shininess", 12.8f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Copper"] = copperMetal;
+	//Gold
+	Material* goldMetal = new Material(material);
+	goldMetal->SetVec("material.ambient", { 0.24725f, 0.1995f, 0.0745f }, MaterialPropertyDisplayType::COLOUREDIT);
+	goldMetal->SetVec("material.diffuse", { 0.75164f, 0.60648f, 0.22648f }, MaterialPropertyDisplayType::COLOUREDIT);
+	goldMetal->SetVec("material.specular", { 0.628281f, 0.555802f, 0.366065f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	goldMetal->SetFloat("material.shininess", 51.2f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Gold"] = goldMetal;
+	//Silver
+	Material* silverMetal = new Material(material);
+	silverMetal->SetVec("material.ambient", { 0.19225f, 0.19225f, 0.19225f }, MaterialPropertyDisplayType::COLOUREDIT);
+	silverMetal->SetVec("material.diffuse", { 0.50754f, 0.50754f, 0.50754f }, MaterialPropertyDisplayType::COLOUREDIT);
+	silverMetal->SetVec("material.specular", { 0.508273f, 0.508273f, 0.508273f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	silverMetal->SetFloat("material.shininess", 51.2f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Silver"] = silverMetal;
+
+	//Plastics
+	//Red Plastic
+	Material* redPlastic = new Material(material);
+	redPlastic->SetVec("material.ambient", { 0.0f, 0.0f, 0.0f }, MaterialPropertyDisplayType::COLOUREDIT);
+	redPlastic->SetVec("material.diffuse", { 0.5f, 0.0f, 0.0f }, MaterialPropertyDisplayType::COLOUREDIT);
+	redPlastic->SetVec("material.specular", { 0.7f, 0.6f, 0.6f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	redPlastic->SetFloat("material.shininess", 32.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Red Plastic"] = redPlastic;
+	//Green Plastic
+	Material* greenPlastic = new Material(material);
+	greenPlastic->SetVec("material.ambient", { 0.0f, 0.0f, 0.0f }, MaterialPropertyDisplayType::COLOUREDIT);
+	greenPlastic->SetVec("material.diffuse", { 0.1f, 0.35f, 0.1f }, MaterialPropertyDisplayType::COLOUREDIT);
+	greenPlastic->SetVec("material.specular", { 0.45f, 0.55f, 0.45f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	greenPlastic->SetFloat("material.shininess", 32.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Green Plastic"] = greenPlastic;
+	//Yellow Plastic
+	Material* yellowPlastic = new Material(material);
+	yellowPlastic->SetVec("material.ambient", { 0.0f, 0.0f, 0.0f }, MaterialPropertyDisplayType::COLOUREDIT);
+	yellowPlastic->SetVec("material.diffuse", { 0.5f, 0.5f, 0.0f }, MaterialPropertyDisplayType::COLOUREDIT);
+	yellowPlastic->SetVec("material.specular", { 0.6f, 0.6f, 0.5f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	yellowPlastic->SetFloat("material.shininess", 32.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Yellow Plastic"] = yellowPlastic;
+	//Cyan Plastic
+	Material* cyanPlastic = new Material(material);
+	cyanPlastic->SetVec("material.ambient", { 0.0f, 0.1f, 0.06f }, MaterialPropertyDisplayType::COLOUREDIT);
+	cyanPlastic->SetVec("material.diffuse", { 0.0f, 0.50980392f, 0.50980392f }, MaterialPropertyDisplayType::COLOUREDIT);
+	cyanPlastic->SetVec("material.specular", { 0.50196078f, 0.50196078f, 0.50196078f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	cyanPlastic->SetFloat("material.shininess", 32.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Cyan Plastic"] = cyanPlastic;
+	//White Plastic
+	Material* whitePlastic = new Material(material);
+	whitePlastic->SetVec("material.ambient", { 0.0f, 0.0f, 0.0f }, MaterialPropertyDisplayType::COLOUREDIT);
+	whitePlastic->SetVec("material.diffuse", { 0.55f, 0.55f, 0.55f }, MaterialPropertyDisplayType::COLOUREDIT);
+	whitePlastic->SetVec("material.specular", { 0.70f, 0.70f, 0.70f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	whitePlastic->SetFloat("material.shininess", 32.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["White Plastic"] = whitePlastic;
+	//Black Plastic
+	Material* blackPlastic = new Material(material);
+	blackPlastic->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, MaterialPropertyDisplayType::COLOUREDIT);
+	blackPlastic->SetVec("material.diffuse", { 0.01f, 0.01f, 0.01f }, MaterialPropertyDisplayType::COLOUREDIT);
+	blackPlastic->SetVec("material.specular", { 0.5f, 0.5f, 0.5f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	blackPlastic->SetFloat("material.shininess", 32.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Black Plastic"] = blackPlastic;
+
+	//Rubbers
+	//Red Rubber
+	Material* redRubber = new Material(material);
+	redRubber->SetVec("material.ambient", {0.05f, 0.0f, 0.0f}, MaterialPropertyDisplayType::COLOUREDIT);
+	redRubber->SetVec("material.diffuse", {0.5f, 0.4f, 0.4f}, MaterialPropertyDisplayType::COLOUREDIT);
+	redRubber->SetVec("material.specular", {0.7f, 0.04f, 0.04f}, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	redRubber->SetFloat("material.shininess", 10.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Red Rubber"] = redRubber;
+	//Green Rubber
+	Material* greenRubber = new Material(material);
+	greenRubber->SetVec("material.ambient", {0.0f, 0.05f, 0.0f}, MaterialPropertyDisplayType::COLOUREDIT);
+	greenRubber->SetVec("material.diffuse", {0.4f, 0.5f, 0.4f}, MaterialPropertyDisplayType::COLOUREDIT);
+	greenRubber->SetVec("material.specular", {0.04f, 0.7f, 0.04f}, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	greenRubber->SetFloat("material.shininess", 10.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Green Rubber"] = greenRubber;
+	//Yellow Rubber
+	Material* yellowRubber = new Material(material);
+	yellowRubber->SetVec("material.ambient", { 0.05f, 0.05f, 0.0f }, MaterialPropertyDisplayType::COLOUREDIT);
+	yellowRubber->SetVec("material.diffuse", { 0.5f, 0.5f, 0.4f }, MaterialPropertyDisplayType::COLOUREDIT);
+	yellowRubber->SetVec("material.specular", { 0.7f, 0.7f, 0.04f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	yellowRubber->SetFloat("material.shininess", 10.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Yellow Rubber"] = yellowRubber;
+	//Cyan Rubber
+	Material* cyanRubber = new Material(material);
+	cyanRubber->SetVec("material.ambient", { 0.0f, 0.05f, 0.05f }, MaterialPropertyDisplayType::COLOUREDIT);
+	cyanRubber->SetVec("material.diffuse", { 0.4f, 0.5f, 0.5f }, MaterialPropertyDisplayType::COLOUREDIT);
+	cyanRubber->SetVec("material.specular", { 0.04f, 0.7f, 0.7f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	cyanRubber->SetFloat("material.shininess", 10.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Cyan Rubber"] = cyanRubber;
+	//White Rubber
+	Material* whiteRubber = new Material(material);
+	whiteRubber->SetVec("material.ambient", { 0.05f, 0.05f, 0.05f }, MaterialPropertyDisplayType::COLOUREDIT);
+	whiteRubber->SetVec("material.diffuse", { 0.5f, 0.5f, 0.5f }, MaterialPropertyDisplayType::COLOUREDIT);
+	whiteRubber->SetVec("material.specular", { 0.70f, 0.70f, 0.70f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	whiteRubber->SetFloat("material.shininess", 10.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["White Rubber"] = whiteRubber;
+	//Black Rubber
+	Material* blackRubber = new Material(material);
+	blackRubber->SetVec("material.ambient", { 0.02f, 0.02f, 0.02f }, MaterialPropertyDisplayType::COLOUREDIT);
+	blackRubber->SetVec("material.diffuse", { 0.01f, 0.01f, 0.01f }, MaterialPropertyDisplayType::COLOUREDIT);
+	blackRubber->SetVec("material.specular", { 0.4f, 0.4f, 0.4f }, MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+	blackRubber->SetFloat("material.shininess", 10.0f, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
+	temp["Black Rubber"] = blackRubber;
+
+	return temp;
+}
+
+std::vector<Skybox*> ModelViewer::CreateSkyboxes() const
+{
+	std::vector<Skybox*> temp;
+
+	std::map<std::string, Cubemap*> cubemaps;
+
+	std::filesystem::path skyboxFolder(std::filesystem::current_path().string() + "\\Assets\\Skyboxes");
+
+	for( const auto& path : std::filesystem::directory_iterator(skyboxFolder) )
+	{
+		std::string name = path.path().string();
+		name = name.substr(name.find_last_of("\\") + 1);
+		Cubemap* cubemap = new Cubemap(path.path().string());
+
+		cubemaps.insert({ name, cubemap });
+	}
+
+	for( auto it = cubemaps.begin(); it != cubemaps.end(); it++ )
+	{
+		Skybox* skybox = new Skybox(it->first, it->second, skyboxShader, camera);
+		temp.push_back(skybox);
+	}
 
 	return temp;
 }

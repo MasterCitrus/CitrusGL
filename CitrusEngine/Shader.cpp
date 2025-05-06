@@ -105,14 +105,19 @@ bool ShaderCode::CreateShader( ShaderType type, const std::string& src )
 	{
 	case VERTEX:
 		shaderID = glCreateShader( GL_VERTEX_SHADER );
+		break;
 	case FRAGMENT:
 		shaderID = glCreateShader( GL_FRAGMENT_SHADER );
+		break;
 	case GEOMETRY:
 		shaderID = glCreateShader( GL_GEOMETRY_SHADER );
+		break;
 	case TESS_EVAL:
 		shaderID = glCreateShader( GL_TESS_EVALUATION_SHADER );
+		break;
 	case TESS_CONTROL:
 		shaderID = glCreateShader( GL_TESS_CONTROL_SHADER );
+		break;
 	default:
 		return false;
 	}

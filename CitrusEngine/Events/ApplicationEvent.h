@@ -5,7 +5,7 @@
 class WindowResizeEvent : public Event
 {
 public:
-	WindowResizeEvent(unsigned int width, unsigned int heigth)
+	WindowResizeEvent(unsigned int width, unsigned int height)
 		: width(width), height(height)
 	{
 	}

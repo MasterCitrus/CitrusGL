@@ -7,6 +7,7 @@
 
 class DirectionLight;
 class PointLight;
+class Skybox;
 
 struct MaterialProperty;
 
@@ -29,26 +30,33 @@ protected:
 	bool OnMouseButtonPressed( MouseButtonPressedEvent& e ) override;
 
 private:
-	std::vector<Material*> CreateMaterials() const;
+	std::map<std::string, Material*> CreateMaterialsFromMaterial(Material* material) const;
+	std::vector<Skybox*> CreateSkyboxes() const;
 
 private:
 	std::vector<PointLight*> lights;
-	std::vector<Material*> materials;
+	std::map<std::string, Material*> materials;
 	DirectionLight* sun;
 	AssetManager assetManager;
 	Model* testModel;
-	Shader staticMeshShader;
-	Shader skinnedMeshShader;
+	Shader blinnPhong;
+	Shader* skyboxShader;
 	Framebuffer* framebuffer;
 	Camera* camera;
 	MaterialProperty* prop;
 	bool viewportFocused;
 	bool viewportHovered;
 
+	std::vector<Skybox*> skyboxes;
+
+	std::map<std::string, Material*>::iterator selectedMaterial;
+	std::map<std::string, MaterialProperty>::iterator selectedProp;
+
 	//ImGui Variables
 	int selectedMesh = 0;
 	int selectedMatProp = 0;
 	int selectedAnimation = 0;
 	int selectedLight = 0;
+	int selectedSkybox = 0;
 };
 

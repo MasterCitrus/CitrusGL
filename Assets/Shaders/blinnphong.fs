@@ -40,6 +40,7 @@ struct PointLight
 	vec3 specular;
 	float linear;
 	float quadratic;
+	float intensity;
 };
 
 struct SpotLight
@@ -122,8 +123,8 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 	vec3 specular = light.specular * spec * GetSpecularColour();
 	
 	ambient *= attenuation;
-	diffuse *= attenuation;
-	specular *= attenuation;
+	diffuse *= attenuation * light.intensity;
+	specular *= attenuation * light.intensity;
 	
 	return (ambient + diffuse + specular);
 }

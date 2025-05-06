@@ -29,10 +29,12 @@ public:
 
 	float& GetLinear() { return linear; }
 	float& GetQuadratic() { return quadratic; }
+	float& GetIntensity() { return intensity; }
 
 private:
 	float linear = 0.09f;
 	float quadratic = 0.032f;
+	float intensity = 1.0f;
 };
 
 class SpotLight : public Light

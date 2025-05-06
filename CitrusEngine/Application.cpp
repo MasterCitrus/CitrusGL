@@ -14,7 +14,7 @@ Application::Application()
 
 Application::~Application()
 {
-
+	delete window;
 }
 
 void Application::Run(const std::string& title, unsigned int width, unsigned int height, bool fullscreen)

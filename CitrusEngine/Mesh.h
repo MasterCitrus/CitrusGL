@@ -14,6 +14,7 @@ class Mesh
 {
 public:
 	Mesh( const std::string& name, std::vector<Vertex> vertices, std::vector<unsigned int> indices, Material* material );
+	~Mesh();
 
 	void Draw();
 

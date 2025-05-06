@@ -5,7 +5,7 @@
 #include "Texture.h"
 #include "Utils.h"
 
-Model::Model( const std::string& path, Shader& shader )
+Model::Model( const std::string& path, Shader* shader )
 	: shader(shader)
 {
 	LoadModel( path, shader );
@@ -18,7 +18,9 @@ Model::Model( const std::string& path, Shader& shader )
 
 Model::~Model()
 {
+	for( auto& mesh : meshes ) delete mesh;
 
+	for( auto& texture : loadedTextures ) delete texture;
 }
 
 void Model::Update(float delta)
@@ -33,7 +35,7 @@ void Model::Draw()
 {
 	for (auto& mesh : meshes)
 	{
-		mesh.Draw();
+		mesh->Draw();
 	}
 
 	if( animations.size() > 0 )
@@ -41,12 +43,12 @@ void Model::Draw()
 		auto transforms = animator->GetFinalBoneMatrices();
 		for( int i = 0; i < transforms.size(); ++i )
 		{
-			shader.SetMat(( "finalBoneMatrices[" + std::to_string(i) + "]" ).c_str(), transforms[i]);
+			shader->SetMat(( "finalBoneMatrices[" + std::to_string(i) + "]" ).c_str(), transforms[i]);
 		}
 	}
 }
 
-void Model::LoadModel( const std::string& path, Shader& shader )
+void Model::LoadModel( const std::string& path, Shader* shader )
 {
 	Assimp::Importer import;
 	import.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
@@ -79,7 +81,7 @@ void Model::LoadAnimations(const aiScene* scene)
 	}
 }
 
-void Model::ProcessNode( aiNode* node, const aiScene* scene, Shader& shader )
+void Model::ProcessNode( aiNode* node, const aiScene* scene, Shader* shader )
 {
 	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
@@ -93,7 +95,7 @@ void Model::ProcessNode( aiNode* node, const aiScene* scene, Shader& shader )
 	}
 }
 
-Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
+Mesh* Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader* shader )
 {
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
@@ -151,10 +153,10 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
 		mat->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
 		mat->Get(AI_MATKEY_SHININESS, shininess);
 
-		material->SetVec("material.ambient", GetGLMVec(ambient), true);
-		material->SetVec("material.diffuse", GetGLMVec(diffuse), true);
-		material->SetVec("material.specular", GetGLMVec(specular), false);
-		material->SetFloat("material.shininess", shininess);
+		material->SetVec("material.ambient", GetGLMVec(ambient), MaterialPropertyDisplayType::COLOUREDIT);
+		material->SetVec("material.diffuse", GetGLMVec(diffuse), MaterialPropertyDisplayType::COLOUREDIT);
+		material->SetVec("material.specular", GetGLMVec(specular), MaterialPropertyDisplayType::DRAG, 0.0f, 1.0f);
+		material->SetFloat("material.shininess", shininess, MaterialPropertyDisplayType::SLIDER, 0.0f, 128.0f);
 
 		//Textures
 		std::vector<Texture*> diffuseMaps = LoadMaterialTextures(mat, aiTextureType_DIFFUSE);
@@ -210,7 +212,7 @@ Mesh Model::ProcessMesh( aiMesh* mesh, const aiScene* scene, Shader& shader )
 
 	ExtractBoneWeightForVertices( vertices, mesh, scene );
 
-	return Mesh( mesh->mName.C_Str(), vertices, indices, material );
+	return new Mesh( mesh->mName.C_Str(), vertices, indices, material );
 }
 
 Animation* Model::ProcessAnimation(aiAnimation* animation, aiNode* node)

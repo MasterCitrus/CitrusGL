@@ -10,6 +10,13 @@ Mesh::Mesh( const std::string& name, std::vector<Vertex> vertices, std::vector<u
 	Initialise();
 }
 
+Mesh::~Mesh()
+{
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteBuffers(1, &VBO);
+	glDeleteBuffers(1, &IBO);
+}
+
 void Mesh::Draw()
 {
 	material->Apply();
