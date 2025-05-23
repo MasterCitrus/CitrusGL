@@ -317,21 +317,150 @@ void ModelViewer::ImGuiDraw()
 					}
 					ImGui::EndCombo();
 				}
-				ImGui::Text("Properties List");
-				if (ImGui::BeginCombo("##MatProps", selectedProp->first.c_str()))
+				if (ImGui::CollapsingHeader( "Material Properties" ))
 				{
+					int propCount = 0;
 					for (auto it = testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().begin(); it != testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().end(); it++)
 					{
-						if (ImGui::Selectable(it->first.c_str(), it->first == selectedProp->first))
+						MaterialProperty* property = &it->second;
+
+						if (std::holds_alternative<int>( (*property).value ))
 						{
-							selectedProp = it;
-							prop = &selectedProp->second;
+							ImGui::Text( (*property).name.c_str() );
+							switch (prop->type)
+							{
+								case MaterialPropertyDisplayType::INPUT:
+									ImGui::InputInt( ("##Int" + std::to_string( propCount )).c_str(), &std::get<int>((*property).value));
+									break;
+								case MaterialPropertyDisplayType::DRAG:
+									ImGui::DragInt( ("##Int" + std::to_string( propCount )).c_str(), &std::get<int>( (*property).value ), 0.01f, std::get<int>( prop->minValue ), std::get<int>( prop->maxValue ) );
+									break;
+								case MaterialPropertyDisplayType::SLIDER:
+									ImGui::SliderInt( ("##Int" + std::to_string( propCount )).c_str(), &std::get<int>( (*property).value ), std::get<int>( prop->minValue ), std::get<int>( prop->maxValue ) );
+									break;
+								default:
+									ImGui::InputInt( ("##Int" + std::to_string( propCount )).c_str(), &std::get<int>( (*property).value ) );
+									break;
+							}
 						}
+						else if (std::holds_alternative<float>( (*property).value ))
+						{
+							ImGui::Text( (*property).name.c_str() );
+							switch (prop->type)
+							{
+								case MaterialPropertyDisplayType::INPUT:
+									ImGui::InputFloat( ("##Float" + std::to_string(propCount)).c_str(), &std::get<float>( (*property).value ) );
+									break;
+								case MaterialPropertyDisplayType::DRAG:
+									ImGui::DragFloat( ("##Float" + std::to_string( propCount )).c_str(), &std::get<float>( (*property).value ), 0.0f, std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ) );
+									break;
+								case MaterialPropertyDisplayType::SLIDER:
+									ImGui::SliderFloat( ("##Float" + std::to_string( propCount )).c_str(), &std::get<float>( (*property).value ), std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ), "%.2f" );
+									break;
+								default:
+									ImGui::InputFloat( ("##Float" + std::to_string( propCount )).c_str(), &std::get<float>( (*property).value ) );
+									break;
+							}
+						}
+						else if (std::holds_alternative<bool>( (*property).value ))
+						{
+							ImGui::Text( (*property).name.c_str() );
+							ImGui::Checkbox( ("##Bool" + std::to_string(propCount)).c_str(), &std::get<bool>((*property).value));
+						}
+						else if (std::holds_alternative<glm::vec2>( (*property).value ))
+						{
+							ImGui::Text( (*property).name.c_str() );
+							switch (prop->type)
+							{
+								case MaterialPropertyDisplayType::INPUT:
+									ImGui::InputFloat2( ("##Float" + std::to_string( propCount )).c_str(), &std::get<glm::vec2>( (*property).value )[0] );
+									break;
+								case MaterialPropertyDisplayType::DRAG:
+									ImGui::DragFloat2( ("##Float" + std::to_string( propCount )).c_str(), &std::get<glm::vec2>( (*property).value )[0], 0.0f, std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ) );
+									break;
+								case MaterialPropertyDisplayType::SLIDER:
+									ImGui::SliderFloat2( ("##Float" + std::to_string( propCount )).c_str(), &std::get<glm::vec2>( (*property).value )[0], std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ), "%.2f" );
+									break;
+								default:
+									ImGui::InputFloat2( ("##Float" + std::to_string( propCount )).c_str(), &std::get<glm::vec2>( (*property).value )[0] );
+									break;
+							}
+						}
+						else if (std::holds_alternative<glm::vec3>( (*property).value ))
+						{
+							ImGui::Text( (*property).name.c_str() );
+							switch (prop->type)
+							{
+								case MaterialPropertyDisplayType::INPUT:
+									ImGui::InputFloat3( ("##glm::vec3" + std::to_string(propCount)).c_str(), &std::get<glm::vec3>((*property).value)[0]);
+									break;
+								case MaterialPropertyDisplayType::DRAG:
+									ImGui::DragFloat3( ("##glm::vec3" + std::to_string( propCount )).c_str(), &std::get<glm::vec3>( (*property).value )[0], 0.0f, std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ) );
+									break;
+								case MaterialPropertyDisplayType::SLIDER:
+									ImGui::SliderFloat3( ("##glm::vec3" + std::to_string( propCount )).c_str(), &std::get<glm::vec3>( (*property).value )[0], std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ), "%.2f" );
+									break;
+								case MaterialPropertyDisplayType::COLOUREDIT:
+									ImGui::ColorEdit3( ("##glm::vec3" + std::to_string( propCount )).c_str(), &std::get<glm::vec3>( (*property).value )[0] );
+									break;
+								case MaterialPropertyDisplayType::COLOURPICKER:
+									ImGui::ColorPicker3( ("##glm::vec3" + std::to_string( propCount )).c_str(), &std::get<glm::vec3>( (*property).value )[0] );
+									break;
+								default:
+									ImGui::InputFloat3( ("##glm::vec3" + std::to_string( propCount )).c_str(), &std::get<glm::vec3>( (*property).value )[0] );
+									break;
+							}
+
+						}
+						else if (std::holds_alternative<glm::vec4>( (*property).value ))
+						{
+							ImGui::Text( (*property).name.c_str() );
+							switch (prop->type)
+							{
+								case MaterialPropertyDisplayType::INPUT:
+									ImGui::InputFloat4( ("##glm::vec4" + std::to_string( propCount )).c_str(), &std::get<glm::vec4>( (*property).value )[0] );
+									break;
+								case MaterialPropertyDisplayType::DRAG:
+									ImGui::DragFloat4( ("##glm::vec4" + std::to_string( propCount )).c_str(), &std::get<glm::vec4>( (*property).value )[0], 0.0f, std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ) );
+									break;
+								case MaterialPropertyDisplayType::SLIDER:
+									ImGui::SliderFloat4( ("##glm::vec4" + std::to_string( propCount )).c_str(), &std::get<glm::vec4>( (*property).value )[0], std::get<float>( prop->minValue ), std::get<float>( prop->maxValue ), "%.2f" );
+									break;
+								case MaterialPropertyDisplayType::COLOUREDIT:
+									ImGui::ColorEdit4( ("##glm::vec4" + std::to_string( propCount )).c_str(), &std::get<glm::vec4>( (*property).value )[0] );
+									break;
+								case MaterialPropertyDisplayType::COLOURPICKER:
+									ImGui::ColorPicker4( ("##glm::vec4" + std::to_string( propCount )).c_str(), &std::get<glm::vec4>( (*property).value )[0] );
+									break;
+								default:
+									ImGui::InputFloat4( ("##glm::vec4" + std::to_string( propCount )).c_str(), &std::get<glm::vec4>( (*property).value )[0] );
+									break;
+							}
+						}
+						else if (std::holds_alternative<Texture*>( (*property).value ))
+						{
+							ImGui::Text( (*property).name.c_str() );
+							ImGui::Image( std::get<Texture*>( (*property).value )->GetTextureID(), { 256, 256 } );
+						}
+
+						propCount++;
 					}
-					ImGui::EndCombo();
 				}
-				ImGui::SeparatorText("Material Property Settings");
-				if (std::holds_alternative<int>((*prop).value))
+				//ImGui::Text("Properties List");
+				//if (ImGui::BeginCombo("##MatProps", selectedProp->first.c_str()))
+				//{
+				//	for (auto it = testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().begin(); it != testModel->GetMeshes()[selectedMesh]->GetMaterial()->GetMaterialProperties().end(); it++)
+				//	{
+				//		if (ImGui::Selectable(it->first.c_str(), it->first == selectedProp->first))
+				//		{
+				//			selectedProp = it;
+				//			prop = &selectedProp->second;
+				//		}
+				//	}
+				//	ImGui::EndCombo();
+				//}
+				//ImGui::SeparatorText("Material Property Settings");
+				/*if (std::holds_alternative<int>((*prop).value))
 				{
 					ImGui::Text((*prop).name.c_str());
 					switch( prop->type )
@@ -450,7 +579,7 @@ void ModelViewer::ImGuiDraw()
 					ImGui::Image(std::get<Texture*>((*prop).value)->GetTextureID(), {256, 256});
 				}
 				ImGui::SeparatorEx(ImGuiSeparatorFlags_Horizontal, 2.5f);
-				ImGui::Spacing();
+				ImGui::Spacing();*/
 			}
 			if (ImGui::CollapsingHeader("Animations"))
 			{
