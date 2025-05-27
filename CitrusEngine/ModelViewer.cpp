@@ -60,7 +60,7 @@ bool ModelViewer::Initialise()
 
 	skyboxes = CreateSkyboxes();
 
-	testModel = new Model("Assets/Models/person.gltf", &blinnPhong);
+	testModel = new Model("Assets/Models/RoundedCube.obj", &blinnPhong);
 
 	framebuffer = new Framebuffer(GetWindow().GetWidth(), GetWindow().GetHeight());
 
